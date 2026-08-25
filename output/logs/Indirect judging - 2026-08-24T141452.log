@@ -1,0 +1,488 @@
+log -> C:\Users\SameerIyer\Comprara\Comprara & PI - Team shared folder - Documents\Sameer\01.Claude\Medical QA - Indirects\output\logs\Indirect judging - 2026-08-24T141452.log
+generation plan: 8 passes over 4 clients, workers=16 batch=10   ** pilot **
+   melbourne_health     categorised
+   melbourne_health     uncategorised
+   northern_health      categorised
+   northern_health      uncategorised
+   sydney_adventist     categorised
+   sydney_adventist     uncategorised
+   western_health       categorised
+   western_health       uncategorised
+
+⚠️ RESET: cleared 28 NIM_* columns on 2,000 rows. Claude's verdicts, MSD_COHERENCE and the REVIEW layer are untouched.
+
+====================================================================================================
+=== melbourne_health categorised   exit=0   5.6 min
+====================================================================================================
+run pilot-20260820T141149   qa_line 2,000 rows / 1 run_id   models: nvidia/nemotron-3-super-120b-a12b, openai/gpt-oss-120b, google/gemma-4-31b-it
+  melbourne_health: 375 lines x 3 models   38 batches of <=10, 16 at a time
+      openai/gpt-oss-120b: HTTP 429 Too Many Requests - retry 1/6 in 4s
+      openai/gpt-oss-120b: HTTP 429 Too Many Requests - retry 1/6 in 4s
+      nvidia/nemotron-3-super-120b-a12b: HTTP 429 Too Many Requests - retry 1/6 in 4s
+      nvidia/nemotron-3-super-120b-a12b: HTTP 429 Too Many Requests - retry 1/6 in 4s
+      [5/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts      7.2s
+      [15/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts      6.8s
+      [1/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts      7.3s
+      [7/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts      7.4s
+      [14/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts      7.7s
+      [3/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts      8.2s
+      [2/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts      8.4s
+      [16/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts      8.0s
+      [10/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts      8.3s
+      [11/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts      8.4s
+      [12/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts      8.5s
+      [8/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts      8.8s
+      [9/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts      9.3s
+      [4/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts     10.8s
+      [13/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts     12.2s
+      [3/38] openai/gpt-oss-120b                      10 verdicts     16.3s
+      [11/38] openai/gpt-oss-120b                      10 verdicts     16.2s
+      [5/38] openai/gpt-oss-120b                      10 verdicts     16.9s
+      [4/38] openai/gpt-oss-120b                      10 verdicts     17.8s
+      [1/38] openai/gpt-oss-120b                      10 verdicts     19.2s
+      [6/38] openai/gpt-oss-120b                      10 verdicts     19.9s
+      [14/38] openai/gpt-oss-120b                      10 verdicts     20.2s
+      [9/38] openai/gpt-oss-120b                      10 verdicts     20.3s
+      [10/38] openai/gpt-oss-120b                      10 verdicts     21.1s
+      [8/38] openai/gpt-oss-120b                      10 verdicts     21.6s
+      [16/38] openai/gpt-oss-120b                      10 verdicts     22.3s
+      [15/38] openai/gpt-oss-120b                      10 verdicts     22.7s
+      [7/38] openai/gpt-oss-120b                      10 verdicts     24.6s
+      [2/38] openai/gpt-oss-120b                      10 verdicts     26.5s
+      [13/38] openai/gpt-oss-120b                      10 verdicts     27.6s
+      [12/38] openai/gpt-oss-120b                      10 verdicts     27.8s
+      [6/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts     29.7s
+      [14/38] google/gemma-4-31b-it                    10 verdicts     47.4s
+      [14/38] wrote 10   running total 10/375   0.8 min   12 lines/min
+      [13/38] google/gemma-4-31b-it                    10 verdicts     53.6s
+      [13/38] wrote 10   running total 20/375   0.9 min   22 lines/min
+      [3/38] google/gemma-4-31b-it                    10 verdicts     55.0s
+      [3/38] wrote 10   running total 30/375   0.9 min   33 lines/min
+      [5/38] google/gemma-4-31b-it                    10 verdicts     54.8s
+      [5/38] wrote 10   running total 40/375   0.9 min   43 lines/min
+      [17/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts      9.7s
+      [8/38] google/gemma-4-31b-it                    10 verdicts     57.5s
+      [8/38] wrote 10   running total 50/375   1.0 min   52 lines/min
+      [7/38] google/gemma-4-31b-it                    10 verdicts     59.1s
+      [7/38] wrote 10   running total 60/375   1.0 min   60 lines/min
+      [15/38] google/gemma-4-31b-it                    10 verdicts     59.2s
+      [15/38] wrote 10   running total 70/375   1.0 min   70 lines/min
+      [17/38] openai/gpt-oss-120b                      10 verdicts     12.6s
+      [20/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts      6.3s
+      [23/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts      5.6s
+      [19/38] openai/gpt-oss-120b                      10 verdicts     12.5s
+      [18/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts     14.0s
+      [19/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts     13.5s
+      [20/38] openai/gpt-oss-120b                      10 verdicts     13.4s
+      [21/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts     13.2s
+      [23/38] openai/gpt-oss-120b                      10 verdicts     12.1s
+      [18/38] openai/gpt-oss-120b                      10 verdicts     19.0s
+      [21/38] openai/gpt-oss-120b                      10 verdicts     15.6s
+      [22/38] openai/gpt-oss-120b                      10 verdicts     14.2s
+      [22/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts     16.6s
+      [9/38] google/gemma-4-31b-it                    10 verdicts     80.9s
+      [9/38] wrote 10   running total 80/375   1.4 min   59 lines/min
+      [6/38] google/gemma-4-31b-it                    10 verdicts     81.8s
+      [6/38] wrote 10   running total 90/375   1.4 min   66 lines/min
+      [2/38] google/gemma-4-31b-it                    10 verdicts     83.4s
+      [2/38] wrote 10   running total 100/375   1.4 min   72 lines/min
+      [25/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts      3.6s
+      [24/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts      5.0s
+      [4/38] google/gemma-4-31b-it                    10 verdicts     89.1s
+      [4/38] wrote 10   running total 110/375   1.5 min   74 lines/min
+      [1/38] google/gemma-4-31b-it                    10 verdicts     92.1s
+      [1/38] wrote 10   running total 120/375   1.5 min   78 lines/min
+      [26/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts      9.0s
+      [24/38] openai/gpt-oss-120b                      10 verdicts     14.6s
+      [16/38] google/gemma-4-31b-it                    10 verdicts     95.7s
+      [16/38] wrote 10   running total 130/375   1.6 min   81 lines/min
+      [28/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts      6.1s
+      [26/38] openai/gpt-oss-120b                      10 verdicts     15.9s
+      [27/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts     10.7s
+      [17/38] google/gemma-4-31b-it                    10 verdicts     58.0s
+      [17/38] wrote 10   running total 140/375   1.8 min   79 lines/min
+      [29/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts     10.1s
+      [10/38] google/gemma-4-31b-it                    10 verdicts    109.1s
+      [10/38] wrote 10   running total 150/375   1.8 min   82 lines/min
+      [11/38] google/gemma-4-31b-it                    10 verdicts    110.0s
+      [11/38] wrote 10   running total 160/375   1.8 min   87 lines/min
+      [30/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts      5.4s
+      [20/38] google/gemma-4-31b-it                    10 verdicts     56.6s
+      [20/38] wrote 10   running total 170/375   1.9 min   91 lines/min
+      [23/38] google/gemma-4-31b-it                    10 verdicts     54.5s
+      [28/38] openai/gpt-oss-120b                      10 verdicts     22.2s
+      [23/38] wrote 10   running total 180/375   1.9 min   94 lines/min
+      [31/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts      5.0s
+      [21/38] google/gemma-4-31b-it                    10 verdicts     57.4s
+      [21/38] wrote 10   running total 190/375   1.9 min   99 lines/min
+      [22/38] google/gemma-4-31b-it                    10 verdicts     56.6s
+      [22/38] wrote 10   running total 200/375   1.9 min   103 lines/min
+      [29/38] openai/gpt-oss-120b                      10 verdicts     20.9s
+      [18/38] google/gemma-4-31b-it                    10 verdicts     65.2s
+      [32/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts      8.8s
+      [18/38] wrote 10   running total 210/375   2.0 min   105 lines/min
+      [25/38] openai/gpt-oss-120b                      10 verdicts     37.9s
+      [36/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts      4.5s
+      [35/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts      5.7s
+      [31/38] openai/gpt-oss-120b                      10 verdicts     12.8s
+      [30/38] openai/gpt-oss-120b                      10 verdicts     16.7s
+      [32/38] openai/gpt-oss-120b                      10 verdicts     12.5s
+      [34/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts      9.4s
+      [12/38] google/gemma-4-31b-it                    10 verdicts    123.9s
+      [12/38] wrote 10   running total 220/375   2.1 min   106 lines/min
+      [27/38] openai/gpt-oss-120b                      10 verdicts     35.6s
+      [37/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts      6.9s
+      [38/38] nvidia/nemotron-3-super-120b-a12b         5 verdicts      2.7s
+      [33/38] openai/gpt-oss-120b                      10 verdicts     15.6s
+      [33/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts     16.7s
+      [34/38] openai/gpt-oss-120b                      10 verdicts     15.7s
+      [36/38] openai/gpt-oss-120b                      10 verdicts     13.8s
+      [35/38] openai/gpt-oss-120b                      10 verdicts     16.6s
+      [37/38] openai/gpt-oss-120b                      10 verdicts     15.5s
+      [38/38] openai/gpt-oss-120b                       5 verdicts     11.6s
+      [24/38] google/gemma-4-31b-it                    10 verdicts     56.7s
+      [24/38] wrote 10   running total 230/375   2.3 min   99 lines/min
+      [28/38] google/gemma-4-31b-it                    10 verdicts     48.0s
+      [26/38] google/gemma-4-31b-it                    10 verdicts     57.3s
+      [28/38] wrote 10   running total 240/375   2.4 min   102 lines/min
+      [26/38] wrote 10   running total 250/375   2.4 min   106 lines/min
+      [25/38] google/gemma-4-31b-it                    10 verdicts     69.2s
+      [25/38] wrote 10   running total 260/375   2.5 min   103 lines/min
+      google/gemma-4-31b-it: JSONDecodeError: Expecting ':' delimiter: line 1 column 279 (char 278) - retry 1/6 in 4s
+      [30/38] google/gemma-4-31b-it                    10 verdicts     54.4s
+      [30/38] wrote 10   running total 270/375   2.7 min   100 lines/min
+      [32/38] google/gemma-4-31b-it                    10 verdicts     52.4s
+      [32/38] wrote 10   running total 280/375   2.7 min   102 lines/min
+      [29/38] google/gemma-4-31b-it                    10 verdicts     72.1s
+      [34/38] google/gemma-4-31b-it                    10 verdicts     54.0s
+      [29/38] wrote 10   running total 290/375   2.8 min   103 lines/min
+      [34/38] wrote 10   running total 300/375   2.8 min   106 lines/min
+      [33/38] google/gemma-4-31b-it                    10 verdicts     75.1s
+      [35/38] google/gemma-4-31b-it                    10 verdicts     73.2s
+      [33/38] wrote 10   running total 310/375   3.1 min   98 lines/min
+      [35/38] wrote 10   running total 320/375   3.2 min   101 lines/min
+      [37/38] google/gemma-4-31b-it                    10 verdicts     77.5s
+      [37/38] wrote 10   running total 330/375   3.3 min   100 lines/min
+      google/gemma-4-31b-it: JSONDecodeError: Expecting ':' delimiter: line 1 column 35 (char 34) - retry 1/6 in 4s
+      [31/38] google/gemma-4-31b-it                    10 verdicts    115.8s
+      [31/38] wrote 10   running total 340/375   3.8 min   90 lines/min
+      [36/38] google/gemma-4-31b-it                    10 verdicts    112.5s
+      [36/38] wrote 10   running total 350/375   3.8 min   92 lines/min
+      google/gemma-4-31b-it: TimeoutError: The read operation timed out - retry 1/6 in 4s
+      google/gemma-4-31b-it: TimeoutError: The read operation timed out - retry 1/6 in 4s
+      [19/38] google/gemma-4-31b-it                    10 verdicts    232.2s
+      [19/38] wrote 10   running total 360/375   4.8 min   75 lines/min
+      [27/38] google/gemma-4-31b-it                    10 verdicts    242.8s
+      [27/38] wrote 10   running total 370/375   5.5 min   67 lines/min
+      [38/38] google/gemma-4-31b-it                     5 verdicts    212.5s
+      [38/38] wrote 5   running total 375/375   5.6 min   67 lines/min
+    melbourne_health: wrote 375 lines in 5.6 min   agreement: 2of2 1  2of3 158  3of3 205  split 11
+  qa_line after: 2,000 rows / 1 run_id   UNCHANGED
+  melbourne_health categorised             5.6 min   ok
+
+====================================================================================================
+=== melbourne_health uncategorised   exit=0   3.9 min
+====================================================================================================
+run pilot-20260820T141149   qa_line 2,000 rows / 1 run_id   models: nvidia/nemotron-3-super-120b-a12b, openai/gpt-oss-120b, google/gemma-4-31b-it
+  melbourne_health: 125 lines x 3 models   13 batches of <=10, 16 at a time
+      openai/gpt-oss-120b: HTTP 429 Too Many Requests - retry 1/6 in 4s
+      nvidia/nemotron-3-super-120b-a12b: HTTP 429 Too Many Requests - retry 1/6 in 4s
+      nvidia/nemotron-3-super-120b-a12b: HTTP 429 Too Many Requests - retry 1/6 in 4s
+      [10/13] nvidia/nemotron-3-super-120b-a12b        10 verdicts      6.3s
+      [6/13] nvidia/nemotron-3-super-120b-a12b        10 verdicts      7.0s
+      [1/13] nvidia/nemotron-3-super-120b-a12b        10 verdicts      7.5s
+      [8/13] nvidia/nemotron-3-super-120b-a12b        10 verdicts      7.5s
+      [7/13] nvidia/nemotron-3-super-120b-a12b        10 verdicts      7.6s
+      [9/13] nvidia/nemotron-3-super-120b-a12b        10 verdicts      7.9s
+      [12/13] nvidia/nemotron-3-super-120b-a12b        10 verdicts      8.0s
+      [2/13] nvidia/nemotron-3-super-120b-a12b        10 verdicts      8.5s
+      [3/13] nvidia/nemotron-3-super-120b-a12b        10 verdicts      9.0s
+      [11/13] nvidia/nemotron-3-super-120b-a12b        10 verdicts      9.2s
+      [4/13] nvidia/nemotron-3-super-120b-a12b        10 verdicts     11.0s
+      nvidia/nemotron-3-super-120b-a12b: JSONDecodeError: Expecting ',' delimiter: line 1 column 956 (char 955) - retry 1/6 in 4s
+      [10/13] openai/gpt-oss-120b                      10 verdicts     13.8s
+      [6/13] openai/gpt-oss-120b                      10 verdicts     14.5s
+      [8/13] openai/gpt-oss-120b                      10 verdicts     15.3s
+      [13/13] openai/gpt-oss-120b                       5 verdicts     15.4s
+      [3/13] openai/gpt-oss-120b                      10 verdicts     15.6s
+      [5/13] nvidia/nemotron-3-super-120b-a12b        10 verdicts     15.6s
+      [9/13] openai/gpt-oss-120b                      10 verdicts     15.7s
+      [11/13] openai/gpt-oss-120b                      10 verdicts     16.0s
+      [7/13] openai/gpt-oss-120b                      10 verdicts     17.2s
+      [12/13] openai/gpt-oss-120b                      10 verdicts     17.4s
+      [13/13] nvidia/nemotron-3-super-120b-a12b         5 verdicts     18.6s
+      [2/13] openai/gpt-oss-120b                      10 verdicts     19.0s
+      [1/13] openai/gpt-oss-120b                      10 verdicts     19.2s
+      [5/13] openai/gpt-oss-120b                      10 verdicts     19.3s
+      [4/13] openai/gpt-oss-120b                      10 verdicts     22.3s
+      [13/13] google/gemma-4-31b-it                     5 verdicts     45.8s
+      [13/13] wrote 5   running total 5/125   0.8 min   7 lines/min
+      [10/13] google/gemma-4-31b-it                    10 verdicts     53.4s
+      [10/13] wrote 10   running total 15/125   0.9 min   17 lines/min
+      google/gemma-4-31b-it: JSONDecodeError: Expecting ':' delimiter: line 1 column 64 (char 63) - retry 1/6 in 4s
+      [9/13] google/gemma-4-31b-it                    10 verdicts     58.5s
+      [5/13] google/gemma-4-31b-it                    10 verdicts     58.6s
+      [9/13] wrote 10   running total 25/125   1.0 min   26 lines/min
+      [5/13] wrote 10   running total 35/125   1.0 min   36 lines/min
+      [11/13] google/gemma-4-31b-it                    10 verdicts     60.4s
+      [11/13] wrote 10   running total 45/125   1.0 min   44 lines/min
+      [6/13] google/gemma-4-31b-it                    10 verdicts     60.8s
+      [6/13] wrote 10   running total 55/125   1.0 min   54 lines/min
+      [12/13] google/gemma-4-31b-it                    10 verdicts     65.9s
+      [12/13] wrote 10   running total 65/125   1.1 min   59 lines/min
+      [1/13] google/gemma-4-31b-it                    10 verdicts     70.4s
+      [1/13] wrote 10   running total 75/125   1.2 min   64 lines/min
+      [4/13] google/gemma-4-31b-it                    10 verdicts     76.5s
+      [4/13] wrote 10   running total 85/125   1.3 min   66 lines/min
+      [8/13] google/gemma-4-31b-it                    10 verdicts    112.4s
+      [8/13] wrote 10   running total 95/125   1.9 min   51 lines/min
+      [7/13] google/gemma-4-31b-it                    10 verdicts    136.8s
+      [7/13] wrote 10   running total 105/125   2.3 min   46 lines/min
+      google/gemma-4-31b-it: TimeoutError: The read operation timed out - retry 1/6 in 4s
+      google/gemma-4-31b-it: TimeoutError: The read operation timed out - retry 1/6 in 4s
+      [3/13] google/gemma-4-31b-it                    10 verdicts    225.4s
+      [3/13] wrote 10   running total 115/125   3.8 min   31 lines/min
+      [2/13] google/gemma-4-31b-it                    10 verdicts    233.1s
+      [2/13] wrote 10   running total 125/125   3.9 min   32 lines/min
+    melbourne_health: wrote 125 lines in 3.9 min   agreement: 2of2 33  2of3 33  3of3 37  split 22
+  qa_line after: 2,000 rows / 1 run_id   UNCHANGED
+  melbourne_health uncategorised           3.9 min   ok
+
+====================================================================================================
+=== northern_health categorised   exit=0   5.0 min
+====================================================================================================
+run pilot-20260820T141149   qa_line 2,000 rows / 1 run_id   models: nvidia/nemotron-3-super-120b-a12b, openai/gpt-oss-120b, google/gemma-4-31b-it
+  northern_health: 375 lines x 3 models   38 batches of <=10, 16 at a time
+      nvidia/nemotron-3-super-120b-a12b: HTTP 429 Too Many Requests - retry 1/6 in 4s
+      openai/gpt-oss-120b: HTTP 429 Too Many Requests - retry 1/6 in 4s
+      nvidia/nemotron-3-super-120b-a12b: HTTP 429 Too Many Requests - retry 1/6 in 4s
+      nvidia/nemotron-3-super-120b-a12b: HTTP 429 Too Many Requests - retry 1/6 in 4s
+      openai/gpt-oss-120b: HTTP 429 Too Many Requests - retry 1/6 in 4s
+      openai/gpt-oss-120b: HTTP 429 Too Many Requests - retry 1/6 in 4s
+      [8/38] nvidia/nemotron-3-super-120b-a12b         0 verdicts      2.1s   ** SHORT 0/10 - 10 line(s) lose this model **
+      [5/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts      6.6s
+      [14/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts      6.6s
+      [9/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts      7.9s
+      [10/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts      8.3s
+      [12/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts      8.4s
+      [15/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts      9.3s
+      [16/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts      9.8s
+      [4/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts     10.5s
+      [13/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts     10.7s
+      [11/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts     11.6s
+      [2/38] openai/gpt-oss-120b                      10 verdicts     12.4s
+      [6/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts     12.4s
+      [13/38] openai/gpt-oss-120b                      10 verdicts     13.5s
+      [2/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts     14.1s
+      [10/38] openai/gpt-oss-120b                      10 verdicts     14.2s
+      [1/38] openai/gpt-oss-120b                      10 verdicts     15.7s
+      [5/38] openai/gpt-oss-120b                      10 verdicts     16.0s
+      [7/38] openai/gpt-oss-120b                      10 verdicts     16.1s
+      openai/gpt-oss-120b: JSONDecodeError: Expecting ',' delimiter: line 1 column 338 (char 337) - retry 1/6 in 4s
+      [9/38] openai/gpt-oss-120b                      10 verdicts     16.2s
+      [4/38] openai/gpt-oss-120b                      10 verdicts     16.6s
+      [15/38] openai/gpt-oss-120b                      10 verdicts     17.6s
+      [12/38] openai/gpt-oss-120b                      10 verdicts     18.4s
+      [3/38] openai/gpt-oss-120b                      10 verdicts     19.7s
+      [11/38] openai/gpt-oss-120b                      10 verdicts     20.8s
+      [16/38] openai/gpt-oss-120b                      10 verdicts     20.8s
+      [14/38] openai/gpt-oss-120b                      10 verdicts     21.0s
+      [8/38] openai/gpt-oss-120b                      10 verdicts     25.9s
+      [1/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts     31.8s
+      [3/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts     31.8s
+      [7/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts     33.2s
+      [6/38] openai/gpt-oss-120b                      10 verdicts     33.8s
+      [9/38] google/gemma-4-31b-it                    10 verdicts     50.7s
+      [9/38] wrote 10   running total 10/375   0.9 min   12 lines/min
+      [13/38] google/gemma-4-31b-it                    10 verdicts     51.3s
+      [13/38] wrote 10   running total 20/375   0.9 min   23 lines/min
+      [14/38] google/gemma-4-31b-it                    10 verdicts     52.0s
+      [14/38] wrote 10   running total 30/375   0.9 min   34 lines/min
+      [3/38] google/gemma-4-31b-it                    10 verdicts     52.3s
+      [3/38] wrote 10   running total 40/375   0.9 min   46 lines/min
+      [17/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts      4.4s
+      [7/38] google/gemma-4-31b-it                    10 verdicts     55.5s
+      [7/38] wrote 10   running total 50/375   0.9 min   54 lines/min
+      [18/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts      5.1s
+      [20/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts      6.3s
+      [19/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts      6.8s
+      [16/38] google/gemma-4-31b-it                    10 verdicts     60.9s
+      [16/38] wrote 10   running total 60/375   1.0 min   59 lines/min
+      [21/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts      7.9s
+      [10/38] google/gemma-4-31b-it                    10 verdicts     63.6s
+      [10/38] wrote 10   running total 70/375   1.1 min   66 lines/min
+      [1/38] google/gemma-4-31b-it                    10 verdicts     65.2s
+      [1/38] wrote 10   running total 80/375   1.1 min   73 lines/min
+      [22/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts      6.9s
+      [23/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts      5.7s
+      [21/38] openai/gpt-oss-120b                      10 verdicts     13.9s
+      [19/38] openai/gpt-oss-120b                      10 verdicts     19.2s
+      [20/38] openai/gpt-oss-120b                      10 verdicts     19.3s
+      [11/38] google/gemma-4-31b-it                    10 verdicts     73.1s
+      [11/38] wrote 10   running total 90/375   1.2 min   74 lines/min
+      [2/38] google/gemma-4-31b-it                    10 verdicts     74.8s
+      [2/38] wrote 10   running total 100/375   1.3 min   80 lines/min
+      [8/38] google/gemma-4-31b-it                    10 verdicts     75.0s
+      [8/38] wrote 10   running total 110/375   1.3 min   88 lines/min
+      [23/38] openai/gpt-oss-120b                      10 verdicts     11.7s
+      [6/38] google/gemma-4-31b-it                    10 verdicts     76.2s
+      [6/38] wrote 10   running total 120/375   1.3 min   94 lines/min
+      [24/38] openai/gpt-oss-120b                      10 verdicts     12.4s
+      [15/38] google/gemma-4-31b-it                    10 verdicts     77.6s
+      [15/38] wrote 10   running total 130/375   1.3 min   100 lines/min
+      [24/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts     13.1s
+      [17/38] openai/gpt-oss-120b                      10 verdicts     28.4s
+      [4/38] google/gemma-4-31b-it                    10 verdicts     80.1s
+      [4/38] wrote 10   running total 140/375   1.3 min   104 lines/min
+      nvidia/nemotron-3-super-120b-a12b: JSONDecodeError: Expecting ':' delimiter: line 1 column 868 (char 867) - retry 1/6 in 4s
+      [18/38] openai/gpt-oss-120b                      10 verdicts     29.2s
+      [27/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts      6.5s
+      [28/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts      6.0s
+      [22/38] openai/gpt-oss-120b                      10 verdicts     21.5s
+      [30/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts      7.3s
+      [29/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts      9.8s
+      [27/38] openai/gpt-oss-120b                      10 verdicts     15.0s
+      [29/38] openai/gpt-oss-120b                      10 verdicts     12.8s
+      [25/38] openai/gpt-oss-120b                      10 verdicts     19.4s
+      [26/38] openai/gpt-oss-120b                      10 verdicts     18.3s
+      [28/38] openai/gpt-oss-120b                      10 verdicts     17.8s
+      [25/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts     20.9s
+      [12/38] google/gemma-4-31b-it                    10 verdicts     95.1s
+      [12/38] wrote 10   running total 150/375   1.6 min   94 lines/min
+      [18/38] google/gemma-4-31b-it                    10 verdicts     46.7s
+      [18/38] wrote 10   running total 160/375   1.6 min   98 lines/min
+      [26/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts     23.5s
+      [19/38] google/gemma-4-31b-it                    10 verdicts     46.8s
+      [19/38] wrote 10   running total 170/375   1.7 min   103 lines/min
+      [30/38] openai/gpt-oss-120b                      10 verdicts     19.4s
+      nvidia/nemotron-3-super-120b-a12b: HTTP 502 Bad Gateway - retry 1/6 in 4s
+      [31/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts      6.5s
+      [32/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts      5.0s
+      [17/38] google/gemma-4-31b-it                    10 verdicts     53.4s
+      [17/38] wrote 10   running total 180/375   1.7 min   103 lines/min
+      [20/38] google/gemma-4-31b-it                    10 verdicts     56.1s
+      [20/38] wrote 10   running total 190/375   1.8 min   105 lines/min
+      [34/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts      4.8s
+      [32/38] openai/gpt-oss-120b                      10 verdicts     11.0s
+      [31/38] openai/gpt-oss-120b                      10 verdicts     15.5s
+      [5/38] google/gemma-4-31b-it                    10 verdicts    111.1s
+      [5/38] wrote 10   running total 200/375   1.9 min   108 lines/min
+      [33/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts     17.6s
+      [36/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts      5.8s
+      [21/38] google/gemma-4-31b-it                    10 verdicts     62.4s
+      [21/38] wrote 10   running total 210/375   2.0 min   106 lines/min
+      [33/38] openai/gpt-oss-120b                      10 verdicts     20.0s
+      [36/38] openai/gpt-oss-120b                      10 verdicts      9.0s
+      [22/38] google/gemma-4-31b-it                    10 verdicts     60.1s
+      [22/38] wrote 10   running total 220/375   2.0 min   109 lines/min
+      [35/38] openai/gpt-oss-120b                      10 verdicts     14.0s
+      [37/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts      4.8s
+      [35/38] nvidia/nemotron-3-super-120b-a12b        10 verdicts     14.9s
+      [23/38] google/gemma-4-31b-it                    10 verdicts     60.5s
+      [23/38] wrote 10   running total 230/375   2.1 min   111 lines/min
+      [37/38] openai/gpt-oss-120b                      10 verdicts      7.0s
+      [29/38] google/gemma-4-31b-it                    10 verdicts     48.5s
+      [29/38] wrote 10   running total 240/375   2.1 min   114 lines/min
+      [38/38] nvidia/nemotron-3-super-120b-a12b         5 verdicts      7.1s
+      [34/38] openai/gpt-oss-120b                      10 verdicts     25.8s
+      [38/38] openai/gpt-oss-120b                       5 verdicts      9.0s
+      [30/38] google/gemma-4-31b-it                    10 verdicts     58.2s
+      google/gemma-4-31b-it: JSONDecodeError: Expecting ',' delimiter: line 1 column 829 (char 828) - retry 1/6 in 4s
+      [30/38] wrote 10   running total 250/375   2.3 min   108 lines/min
+      [32/38] google/gemma-4-31b-it                    10 verdicts     44.5s
+      [32/38] wrote 10   running total 260/375   2.4 min   109 lines/min
+      [25/38] google/gemma-4-31b-it                    10 verdicts     74.3s
+      [25/38] wrote 10   running total 270/375   2.5 min   110 lines/min
+      [28/38] google/gemma-4-31b-it                    10 verdicts     71.6s
+      [28/38] wrote 10   running total 280/375   2.5 min   113 lines/min
+      [24/38] google/gemma-4-31b-it                    10 verdicts     83.1s
+      [24/38] wrote 10   running total 290/375   2.5 min   117 lines/min
+      [26/38] google/gemma-4-31b-it                    10 verdicts     76.3s
+      [26/38] wrote 10   running total 300/375   2.5 min   119 lines/min
+      [38/38] google/gemma-4-31b-it                     5 verdicts     41.0s
+      [38/38] wrote 5   running total 305/375   2.7 min   113 lines/min
+      [36/38] google/gemma-4-31b-it                    10 verdicts     53.8s
+      [36/38] wrote 10   running total 315/375   2.8 min   114 lines/min
+      [35/38] google/gemma-4-31b-it                    10 verdicts     68.0s
+      [35/38] wrote 10   running total 325/375   2.9 min   110 lines/min
+      [34/38] google/gemma-4-31b-it                    10 verdicts     73.5s
+      [34/38] wrote 10   running total 335/375   3.0 min   113 lines/min
+      [37/38] google/gemma-4-31b-it                    10 verdicts     62.1s
+      [37/38] wrote 10   running total 345/375   3.0 min   115 lines/min
+      [33/38] google/gemma-4-31b-it                    10 verdicts     84.7s
+      [33/38] wrote 10   running total 355/375   3.1 min   116 lines/min
+      [31/38] google/gemma-4-31b-it                    10 verdicts    116.8s
+      [31/38] wrote 10   running total 365/375   3.5 min   103 lines/min
+      google/gemma-4-31b-it: TimeoutError: The read operation timed out - retry 1/6 in 4s
+      [27/38] google/gemma-4-31b-it                    10 verdicts    226.7s
+      [27/38] wrote 10   running total 375/375   5.0 min   74 lines/min
+    northern_health: wrote 375 lines in 5.0 min   agreement: 2of2 10  2of3 142  3of3 205  split 18
+  qa_line after: 2,000 rows / 1 run_id   UNCHANGED
+  northern_health categorised              5.0 min   ok
+
+====================================================================================================
+=== northern_health uncategorised   exit=0   3.3 min
+====================================================================================================
+run pilot-20260820T141149   qa_line 2,000 rows / 1 run_id   models: nvidia/nemotron-3-super-120b-a12b, openai/gpt-oss-120b, google/gemma-4-31b-it
+  northern_health: 125 lines x 3 models   13 batches of <=10, 16 at a time
+      nvidia/nemotron-3-super-120b-a12b: HTTP 429 Too Many Requests - retry 1/6 in 4s
+      openai/gpt-oss-120b: HTTP 502 Bad Gateway - retry 1/6 in 4s
+      nvidia/nemotron-3-super-120b-a12b: HTTP 429 Too Many Requests - retry 1/6 in 4s
+      [8/13] nvidia/nemotron-3-super-120b-a12b        10 verdicts      6.3s
+      [5/13] nvidia/nemotron-3-super-120b-a12b        10 verdicts      6.7s
+      [10/13] nvidia/nemotron-3-super-120b-a12b        10 verdicts      6.9s
+      [6/13] nvidia/nemotron-3-super-120b-a12b        10 verdicts      7.4s
+      [13/13] nvidia/nemotron-3-super-120b-a12b         5 verdicts      7.5s
+      [11/13] nvidia/nemotron-3-super-120b-a12b        10 verdicts      7.6s
+      [1/13] nvidia/nemotron-3-super-120b-a12b        10 verdicts      7.9s
+      [12/13] nvidia/nemotron-3-super-120b-a12b        10 verdicts      8.1s
+      [4/13] nvidia/nemotron-3-super-120b-a12b        10 verdicts      9.4s
+      [3/13] nvidia/nemotron-3-super-120b-a12b        10 verdicts     10.7s
+      [5/13] openai/gpt-oss-120b                      10 verdicts     11.1s
+      [7/13] nvidia/nemotron-3-super-120b-a12b        10 verdicts     11.7s
+      [1/13] openai/gpt-oss-120b                      10 verdicts     13.1s
+      [13/13] openai/gpt-oss-120b                       5 verdicts     13.0s
+      [4/13] openai/gpt-oss-120b                      10 verdicts     14.6s
+      [10/13] openai/gpt-oss-120b                      10 verdicts     15.4s
+      [2/13] nvidia/nemotron-3-super-120b-a12b        10 verdicts     15.8s
+      [12/13] openai/gpt-oss-120b                      10 verdicts     17.6s
+      [6/13] openai/gpt-oss-120b                      10 verdicts     18.3s
+      [9/13] openai/gpt-oss-120b                      10 verdicts     18.6s
+      [2/13] openai/gpt-oss-120b                      10 verdicts     19.3s
+      [11/13] openai/gpt-oss-120b                      10 verdicts     19.7s
+      [7/13] openai/gpt-oss-120b                      10 verdicts     21.5s
+      [3/13] openai/gpt-oss-120b                      10 verdicts     21.7s
+      [8/13] openai/gpt-oss-120b                      10 verdicts     24.8s
+      [9/13] nvidia/nemotron-3-super-120b-a12b        10 verdicts     28.0s
+      [13/13] google/gemma-4-31b-it                     5 verdicts     33.6s
+      [13/13] wrote 5   running total 5/125   0.6 min   9 lines/min
+      [7/13] google/gemma-4-31b-it                    10 verdicts     42.3s
+      [7/13] wrote 10   running total 15/125   0.7 min   21 lines/min
+      [11/13] google/gemma-4-31b-it                    10 verdicts     47.3s
+      [11/13] wrote 10   running total 25/125   0.8 min   32 lines/min
+      google/gemma-4-31b-it: JSONDecodeError: Expecting ':' delimiter: line 1 column 504 (char 503) - retry 1/6 in 4s
+      [9/13] google/gemma-4-31b-it                    10 verdicts     65.5s
+      [9/13] wrote 10   running total 35/125   1.1 min   32 lines/min
+      [12/13] google/gemma-4-31b-it                    10 verdicts     70.7s
+      [12/13] wrote 10   running total 45/125   1.2 min   38 lines/min
+      [4/13] google/gemma-4-31b-it                    10 verdicts     72.5s
+      [4/13] wrote 10   running total 55/125   1.2 min   45 lines/min
+      [5/13] google/gemma-4-31b-it                    10 verdicts     77.6s
+      [5/13] wrote 10   running total 65/125   1.3 min   50 lines/min
+      google/gemma-4-31b-it: JSONDecodeError: Expecting ':' delimiter: line 1 column 35 (char 34) - retry 1/6 in 4s
+      [1/13] google/gemma-4-31b-it                    10 verdicts     82.2s
+      [1/13] wrote 10   running total 75/125   1.4 min   55 lines/min
+      [6/13] google/gemma-4-31b-it                    10 verdicts     84.1s
+      [6/13] wrote 10   running total 85/125   1.4 min   60 lines/min
+      [3/13] google/gemma-4-31b-it                    10 verdicts     84.7s
+      [3/13] wrote 10   running total 95/125   1.4 min   67 lines/min
+      [8/13] google/gemma-4-31b-it                    10 verdicts    102.6s
+      [8/13] wrote 10   running total 105/125   1.7 min   61 lines/min
+      [10/13] google/gemma-4-31b-it                    10 verdicts    121.9s
+      [10/13] wrote 10   running total 115/125   2.0 min   56 lines/min
+      google/gemma-4-31b-it: JSONDecodeError: Expecting ':' delimiter: line 1 column 68 (char 67) - retry 1/6 in 4s
+      [2/13] google/gemma-4-31b-it                    10 verdicts    198.4s
+      [2/13] wrote 10   running total 125/125   3.3 min   38 lines/min
+    northern_health: wrote 125 lines in 3.3 min   agreement: 2of2 20  2of3 54  3of3 31  split 20
+  qa_line after: 2,000 rows / 1 run_id   UNCHANGED
+  northern_health uncategorised            3.3 min   ok

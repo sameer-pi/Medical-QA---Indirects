@@ -1,0 +1,217 @@
+log -> C:\Users\SameerIyer\Comprara\Comprara & PI - Team shared folder - Documents\Sameer\01.Claude\Medical QA - Indirects\output\logs\Indirect judging - 2026-08-24T094619.log
+generation plan: 8 passes over 4 clients, workers=16 batch=10
+   melbourne_health     categorised
+   melbourne_health     uncategorised
+   northern_health      categorised
+   northern_health      uncategorised
+   sydney_adventist     categorised
+   sydney_adventist     uncategorised
+   western_health       categorised
+   western_health       uncategorised
+
+====================================================================================================
+=== melbourne_health categorised [top-up]   exit=0   0.3 min
+====================================================================================================
+run pilot-20260820T141149   qa_line 2,000 rows / 1 run_id   models: nvidia/nemotron-3-super-120b-a12b, openai/gpt-oss-120b, google/gemma-4-31b-it
+  melbourne_health: 1 lines x 3 models   1 batches of <=10, 16 at a time
+      [1/1] openai/gpt-oss-120b                       1 verdicts      3.2s
+      [1/1] nvidia/nemotron-3-super-120b-a12b         1 verdicts      6.7s
+      google/gemma-4-31b-it: JSONDecodeError: Expecting ',' delimiter: line 1 column 57 (char 56) - retry 1/6 in 4s
+      [1/1] google/gemma-4-31b-it                     1 verdicts     17.8s
+      [1/1] wrote 1   running total 1/1   0.3 min   3 lines/min
+    melbourne_health: wrote 1 lines in 0.3 min   agreement: 3of3 1
+  qa_line after: 2,000 rows / 1 run_id   UNCHANGED
+  melbourne_health categorised [top-up]    0.3 min   ok
+
+====================================================================================================
+=== melbourne_health uncategorised [top-up]   exit=0   1.8 min
+====================================================================================================
+run pilot-20260820T141149   qa_line 2,000 rows / 1 run_id   models: nvidia/nemotron-3-super-120b-a12b, openai/gpt-oss-120b, google/gemma-4-31b-it
+  melbourne_health: 50 lines x 3 models   5 batches of <=10, 16 at a time
+      [2/5] nvidia/nemotron-3-super-120b-a12b        10 verdicts      5.4s
+      [4/5] nvidia/nemotron-3-super-120b-a12b        10 verdicts      6.0s
+      [5/5] nvidia/nemotron-3-super-120b-a12b        10 verdicts      6.3s
+      [1/5] nvidia/nemotron-3-super-120b-a12b        10 verdicts      7.7s
+      [3/5] nvidia/nemotron-3-super-120b-a12b        10 verdicts      8.5s
+      [1/5] openai/gpt-oss-120b                      10 verdicts     13.3s
+      [3/5] openai/gpt-oss-120b                      10 verdicts     13.4s
+      [4/5] openai/gpt-oss-120b                      10 verdicts     14.4s
+      [2/5] openai/gpt-oss-120b                      10 verdicts     17.5s
+      [5/5] openai/gpt-oss-120b                      10 verdicts     17.3s
+      [2/5] google/gemma-4-31b-it                    10 verdicts     27.2s
+      [2/5] wrote 10   running total 10/50   0.5 min   22 lines/min
+      [1/5] google/gemma-4-31b-it                    10 verdicts     42.9s
+      [1/5] wrote 10   running total 20/50   0.7 min   28 lines/min
+      [3/5] google/gemma-4-31b-it                    10 verdicts     50.2s
+      [3/5] wrote 10   running total 30/50   0.8 min   36 lines/min
+      google/gemma-4-31b-it: HTTP 500 Internal Server Error - retry 1/6 in 4s
+      google/gemma-4-31b-it: HTTP 500 Internal Server Error - retry 1/6 in 4s
+      [4/5] google/gemma-4-31b-it                    10 verdicts    101.0s
+      [4/5] wrote 10   running total 40/50   1.7 min   24 lines/min
+      [5/5] google/gemma-4-31b-it                    10 verdicts    108.3s
+      [5/5] wrote 10   running total 50/50   1.8 min   28 lines/min
+    melbourne_health: wrote 50 lines in 1.8 min   agreement: 2of3 11  3of3 35  split 4
+  qa_line after: 2,000 rows / 1 run_id   UNCHANGED
+  melbourne_health uncategorised [top-up]   1.8 min   ok
+
+====================================================================================================
+=== northern_health categorised [top-up]   exit=0   0.0 min
+====================================================================================================
+run pilot-20260820T141149   qa_line 2,000 rows / 1 run_id   models: nvidia/nemotron-3-super-120b-a12b, openai/gpt-oss-120b, google/gemma-4-31b-it
+  northern_health: nothing to judge
+  qa_line after: 2,000 rows / 1 run_id   UNCHANGED
+  northern_health categorised [top-up]     0.0 min   ok
+
+====================================================================================================
+=== northern_health uncategorised [top-up]   exit=0   0.0 min
+====================================================================================================
+run pilot-20260820T141149   qa_line 2,000 rows / 1 run_id   models: nvidia/nemotron-3-super-120b-a12b, openai/gpt-oss-120b, google/gemma-4-31b-it
+  northern_health: nothing to judge
+  qa_line after: 2,000 rows / 1 run_id   UNCHANGED
+  northern_health uncategorised [top-up]   0.0 min   ok
+
+====================================================================================================
+=== sydney_adventist categorised [top-up]   exit=0   0.1 min
+====================================================================================================
+run pilot-20260820T141149   qa_line 2,000 rows / 1 run_id   models: nvidia/nemotron-3-super-120b-a12b, openai/gpt-oss-120b, google/gemma-4-31b-it
+  sydney_adventist: 1 lines x 3 models   1 batches of <=10, 16 at a time
+      [1/1] openai/gpt-oss-120b                       1 verdicts      4.6s
+      [1/1] nvidia/nemotron-3-super-120b-a12b         1 verdicts      5.4s
+      [1/1] google/gemma-4-31b-it                     1 verdicts      6.4s
+      [1/1] wrote 1   running total 1/1   0.1 min   9 lines/min
+    sydney_adventist: wrote 1 lines in 0.1 min   agreement: 2of3 1
+  qa_line after: 2,000 rows / 1 run_id   UNCHANGED
+  sydney_adventist categorised [top-up]    0.1 min   ok
+
+====================================================================================================
+=== sydney_adventist uncategorised [top-up]   exit=0   0.5 min
+====================================================================================================
+run pilot-20260820T141149   qa_line 2,000 rows / 1 run_id   models: nvidia/nemotron-3-super-120b-a12b, openai/gpt-oss-120b, google/gemma-4-31b-it
+  sydney_adventist: 10 lines x 3 models   1 batches of <=10, 16 at a time
+      [1/1] nvidia/nemotron-3-super-120b-a12b        10 verdicts      8.2s
+      [1/1] openai/gpt-oss-120b                      10 verdicts     18.5s
+      [1/1] google/gemma-4-31b-it                    10 verdicts     31.7s
+      [1/1] wrote 10   running total 10/10   0.5 min   19 lines/min
+    sydney_adventist: wrote 10 lines in 0.5 min   agreement: 2of3 2  3of3 7  split 1
+  qa_line after: 2,000 rows / 1 run_id   UNCHANGED
+  sydney_adventist uncategorised [top-up]   0.5 min   ok
+
+====================================================================================================
+=== western_health categorised [top-up]   exit=0   0.0 min
+====================================================================================================
+run pilot-20260820T141149   qa_line 2,000 rows / 1 run_id   models: nvidia/nemotron-3-super-120b-a12b, openai/gpt-oss-120b, google/gemma-4-31b-it
+  western_health: nothing to judge
+  qa_line after: 2,000 rows / 1 run_id   UNCHANGED
+  western_health categorised [top-up]      0.0 min   ok
+
+====================================================================================================
+=== western_health uncategorised [top-up]   exit=0   1.1 min
+====================================================================================================
+run pilot-20260820T141149   qa_line 2,000 rows / 1 run_id   models: nvidia/nemotron-3-super-120b-a12b, openai/gpt-oss-120b, google/gemma-4-31b-it
+  western_health: 80 lines x 3 models   8 batches of <=10, 16 at a time
+      [1/8] nvidia/nemotron-3-super-120b-a12b        10 verdicts      5.7s
+      [6/8] nvidia/nemotron-3-super-120b-a12b        10 verdicts      5.6s
+      [2/8] nvidia/nemotron-3-super-120b-a12b        10 verdicts      6.3s
+      [4/8] nvidia/nemotron-3-super-120b-a12b        10 verdicts      7.7s
+      [3/8] nvidia/nemotron-3-super-120b-a12b        10 verdicts      8.5s
+      [8/8] nvidia/nemotron-3-super-120b-a12b        10 verdicts      9.1s
+      [7/8] nvidia/nemotron-3-super-120b-a12b        10 verdicts      9.4s
+      [1/8] openai/gpt-oss-120b                      10 verdicts     12.8s
+      [8/8] openai/gpt-oss-120b                      10 verdicts     13.1s
+      [2/8] openai/gpt-oss-120b                      10 verdicts     13.5s
+      [7/8] openai/gpt-oss-120b                      10 verdicts     13.9s
+      [4/8] openai/gpt-oss-120b                      10 verdicts     15.1s
+      [5/8] nvidia/nemotron-3-super-120b-a12b        10 verdicts     15.9s
+      [3/8] openai/gpt-oss-120b                      10 verdicts     17.1s
+      [6/8] openai/gpt-oss-120b                      10 verdicts     17.5s
+      [5/8] openai/gpt-oss-120b                      10 verdicts     18.0s
+      [2/8] google/gemma-4-31b-it                    10 verdicts     26.0s
+      [2/8] wrote 10   running total 10/80   0.4 min   23 lines/min
+      [3/8] google/gemma-4-31b-it                    10 verdicts     27.6s
+      [3/8] wrote 10   running total 20/80   0.5 min   43 lines/min
+      [7/8] google/gemma-4-31b-it                    10 verdicts     28.4s
+      [7/8] wrote 10   running total 30/80   0.5 min   63 lines/min
+      [6/8] google/gemma-4-31b-it                    10 verdicts     29.2s
+      [6/8] wrote 10   running total 40/80   0.5 min   81 lines/min
+      [5/8] google/gemma-4-31b-it                    10 verdicts     29.9s
+      [4/8] google/gemma-4-31b-it                    10 verdicts     30.0s
+      [5/8] wrote 10   running total 50/80   0.5 min   99 lines/min
+      [4/8] wrote 10   running total 60/80   0.5 min   119 lines/min
+      [8/8] google/gemma-4-31b-it                    10 verdicts     30.6s
+      [8/8] wrote 10   running total 70/80   0.5 min   136 lines/min
+      [1/8] google/gemma-4-31b-it                    10 verdicts     64.4s
+      [1/8] wrote 10   running total 80/80   1.1 min   74 lines/min
+    western_health: wrote 80 lines in 1.1 min   agreement: 2of3 28  3of3 45  split 7
+  qa_line after: 2,000 rows / 1 run_id   UNCHANGED
+  western_health uncategorised [top-up]    1.1 min   ok
+
+judging done in 3.9 minutes
+
+====================================================================================================
+=== action_classify   exit=0   0.5 min
+====================================================================================================
+qa_line 2,000 rows / 1 run_id
+crosswalk: Indirect Taxonomy - CROSSWALK - 2026-08-21.csv   1,110 source categories mapped
+recovered 1 destinations the judge stated in the rationale but left out of the field (exact keys only)
+classified 2,000 lines   filled 0 Re-mapped destinations from the crosswalk
+qa_line after: 2,000 rows / 1 run_id   UNCHANGED
+
+=== WHAT THE 6 ACTIONS MEAN ===
+  No change        Filed correctly and completely. Nothing for anyone to do.
+  Re-mapped        Filed correctly - but WE moved the category. The hospital did nothing wrong. Bulk-approvable: this is a migration, not a decision.
+  Incomplete       Never finished. Either no category at all, or a top level with placeholders below it. We have filled in the detail. A gap, not an error.
+  Miscategorised   Genuinely in the wrong branch, and we say where it belongs. THIS is the queue that deserves an analyst's judgement.
+  Needs evidence   We cannot act. Either the evidence did not settle it (Uncertain), or we know it is wrong but cannot say where (Incorrect with no destination).
+  Out of scope     Not an indirect line at all. The judge placed it in a Clinical branch, which is outside this programme. Nothing to fix - it is a scope finding, and the hospital's clinical categorisation owns it. Do NOT count these as errors.
+
+=== NIM_ACTION x NIM_VERDICT ===
+  action               Correct   Incorrect   Uncertain    TOTAL
+  Incomplete                 5          54           0       59
+  Miscategorised             0         233           0      233
+  Needs evidence             0         260         666      926
+  No change                484           0           0      484
+  Out of scope               0          68           2       70
+  Re-mapped                154          74           0      228
+  TOTAL                    643         689         668    2,000
+
+  'Needs evidence' splits into: 666 Uncertain (evidence did not settle it)  +  260 Incorrect with no destination
+  the queue that needs an analyst: 233 Miscategorised lines
+  rows with no action: 0   OK
+  Re-mapped rows with NO destination: 0   OK
+  Miscategorised rows with NO destination: 0   OK
+
+  rationales mentioning GL / account name / cost centre: 1   ** 0 of them on a FIRM verdict - INVESTIGATE **
+  rationales denying a description that is GENUINELY descriptive: 14   (of 79 flagged; the rest are identifier-only lines where the judge is right)   ** false statement about the evidence **
+
+=== WHICH MODELS CARRIED THE VERDICT (NIM_DECIDED_BY) ===
+  nvidia/nemotron-3-super-120b-a12b, openai/gpt-oss-120b, google/gem    1,042
+  openai/gpt-oss-120b, google/gemma-4-31b-it                              462
+  nvidia/nemotron-3-super-120b-a12b, google/gemma-4-31b-it                216
+  nvidia/nemotron-3-super-120b-a12b, openai/gpt-oss-120b                  200
+  nvidia/nemotron-3-super-120b-a12b                                        50
+  google/gemma-4-31b-it                                                    26
+  openai/gpt-oss-120b                                                       4
+
+  rows where the models named disagree with NIM_AGREEMENT: 0   OK
+classify: 29s   ok
+
+====================================================================================================
+=== score_answer_key   exit=1   0.0 min
+====================================================================================================
+  no reviewed lines - ingest an answer key first (make_answer_key.py --ingest)
+  ** FAILED: score_answer_key (exit 1)
+     
+       no reviewed lines - ingest an answer key first (make_answer_key.py --ingest)
+
+=== INVARIANTS (after this generation) ===
+  qa_line rows                           2000   OK
+  distinct run_id                           1   OK
+  lines with no verdict                     0   OK
+  lines with no action                      0   OK
+  rationales citing the GL                  1   ** INVESTIGATE **
+  Re-mapped with no destination             0   OK
+  Miscategorised with no destination        0   OK
+  lines judged by <3 models                 0   OK
+
+total 4.4 minutes   judging rate ~514 lines/min at 16 workers
+full-scale projection: 2,767,046 in-scope lines / 514 per min = 3.7 days of continuous judging

@@ -1,0 +1,120 @@
+# Melbourne Health — client configuration
+# Verified against the live view 2026-07-29. Nothing here is code.
+
+client:
+  key: melbourne_health
+  name: Melbourne Health
+  state: VIC
+  account_manager: Cathy
+
+source:
+  database: Z_Melbourne_Health          # resolved via DB_MELBOURNE_HEALTH in .env
+  table: "[dbo].[AP_PO_Categorized_View]"   # 3,449,852 lines
+  # CONFIRMED 2026-07-30 by Sameer as the view feeding the client dashboard, and verified readable.
+
+  taxonomy_table: "[dbo].[MH_Taxonomy]"          # 2,397 rows
+  taxonomy_join_column: "Master ID"              # CONFIRMED by match count: 2,380,203.
+  #   NOT [Category ID], which gives ZERO. The names look alike; the data does not agree.
+  rules_table: "[dbo].[PMML_Rules_Ordered]"
+
+  columns:
+    supplier: "VENDOR_NAME"
+    spend:    "INVOICE DISTRIBUTION AMOUNT ($)"
+    rule_id:  "RuleID"
+    method:   "Categorisation Method"
+    cat_l0:   "Category Level 0"
+    cat_l1:   "Category Level 1"
+    cat_l2:   "Category Level 2"
+    cat_l3:   "Category Level 3"
+    cat_l4:   "Category Level 4"
+
+    # --- identity: lineage back to the source line ---
+    # Fill rates are IN-SCOPE ONLY, measured 2026-07-31 on a 2,000-line spread sample.
+    # In-scope is the only population that matters, and it differs sharply from a leading slice
+    # of this view, which is clinical-heavy and overstates some fields while understating others.
+    source_row_id:       "RowID"                  # 100%
+    invoice_number:      "INVOICE NUMBER"         # 100%
+    invoice_line_number: "INVOICE LINE NUMBER"    #  51%  <- see line_identity below
+    invoice_id:          "INVOICE ID"             #  51%
+
+    # --- evidence: what the judge falls back on when the description is thin ---
+    gl_account:              "EXPENSE ACCOUNT NUM"   # 100%
+    gl_account_name:         "ACCOUNT NAME"          #  85%
+    cost_centre:             "CHARGED COST CENTRE"   # 100%
+    cost_centre_description: "COST CENTRE TITLE"     #  98%
+    abn:                     "ABN"                   #  43%  <- ABN-assisted matching is weak here
+    supplier_number:         "SUPPLIER NUMBER"       # 100%
+    # unspsc: DELIBERATELY UNMAPPED. UNSPSC looks like the richest field on the view (35% of all
+    #   lines) but it is CLINICAL-ONLY: 47% filled on the 2,568,987 clinical lines and EXACTLY
+    #   ZERO on the 880,865 lines in our scope. Measured on the whole population 2026-07-31.
+    #   A leading 50,000-row slice reads 69%, which is why it must not be trusted - the top of
+    #   this view is clinical. Carrying UNSPSC would add an always-empty column to every extract.
+
+    # --- segmenting ---
+    invoice_date:  "INVOICE DATE"                          # 100%
+    posting_date:  "INVOICE DISTRIBUTION ACCOUNTING DATE"  # 100%
+    taxonomy_key:  "MASTER CATEGORY ID"                    #  84%  (joins MH_Taxonomy.[Master ID])
+
+  # RowID alone, and it is genuinely unique - 3,449,852 distinct over 3,449,852 rows, the only
+  # client where that holds exactly. Melbourne HAS invoice id + line number, but both are ~51%
+  # filled in scope, so a composite built from them would be null on half the lines.
+  line_identity:
+    - source_row_id
+
+  # Tried in order, first non-blank wins. This is what the judge reads.
+  description_fields:
+    - "ITEM_DESCRIPTION"
+    - "PO LINE DESCRIPTION"
+    - "INVOICE DESCRIPTION"
+
+# --- SCOPE GATE: intercompany / own-entity, excluded and reported separately ---
+scope_gate:
+  exclude_cat_l0:
+    - "Inter-Hospital Spend"            # 1,756 lines / $21.7M
+  exclude_rule_ids: []
+  exclude_name_like: []
+
+# --- CLINICAL GATE: Category Level 0 already carries the split. No keywords, by design. ---
+clinical_gate:
+  enabled: true
+  column: cat_l0
+  exclude_values:
+    - "Clinical"                        # 2,568,987 lines / $1.31bn
+
+# In scope after both gates: ~879k lines / $1.45bn
+#   Non-Clinical 762,345 | (null) 114,897 | Non-Procurement 1,867
+
+msd:
+  client_code: "MELB_HEALTH"            # pi_client_id 10
+  # Coherent 2,929 | Incoherent 564 | Unevaluated 8,727 vendors
+
+rules:
+  # Categories absorbing implausible vendor counts — deterministic pre-pass flags these.
+  suspected_default_categories:
+    - "Wound care products"             # 166 vendors / $568M incl. Medtronic, Baxter, J&J
+    - "Staff Training and Development"  # 3,012 vendors
+    - "Fund Raising Program"            # 1,237 vendors
+    - "Not Yet Categorized"
+  product_categories: []
+  overhead_keywords:
+    - "VAT"
+    - "FREIGHT"
+    - " TAX"
+    - "DUTY"
+    - "CUSTOM"
+    - "ROUNDING"
+    - "INSURANCE"
+    - "INTEREST"
+    - "BANK CHAR"
+
+judge:
+  confidence_threshold: null            # null = inherit from .env
+  boundary_categories: []               # populated after taxonomy review
+
+notes:
+  # HSV = HealthShare Victoria. OPEN ITEM: is this pass-through / categorised differently?
+  # 'HSV Stock Invoices' is 360,857 lines / $58M as a category; separate AP_HSV_Data table
+  # and HSV TAG column also exist.
+  open_items:
+    - "HSV spend treatment"
+    - "Meaning of 'Category Adressable' column"

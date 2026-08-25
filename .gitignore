@@ -1,0 +1,40 @@
+# =====================================================================================
+# CREDENTIALS - NEVER COMMIT THESE.
+#
+# .env holds live SQL Server logins for five databases and the NVIDIA NIM API key.
+# Once a secret is committed it stays in the repository's HISTORY forever, even after
+# the file is deleted - so this file has to exist BEFORE the first push, not after.
+#
+# Moving to a second machine, .env is copied across BY HAND, once, outside GitHub.
+# =====================================================================================
+.env
+.env.*
+.env.bak
+!.env.example
+
+# =====================================================================================
+# NOT IGNORED, DELIBERATELY - the irreplaceable files live under output/ and they must
+# travel between machines. Do NOT add output/ to this list:
+#
+#   output/Taxonomy/*DECISIONS NEEDED*.xlsx   583 of Sameer's rulings. It is the only
+#                                             output file read back as an INPUT, so the
+#                                             rulings exist NOWHERE ELSE.
+#   output/Checked/*.xlsx                     completed analyst workbooks - their
+#                                             answers exist nowhere else until ingested.
+#
+# The whole project is ~18 MB. There is no size argument for leaving them out, and
+# losing a ruling because it sat on the other machine is a real and expensive failure.
+# =====================================================================================
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Excel lock files - created while a workbook is open, meaningless to anyone else
+~$*.xlsx
+~$*.csv
+
+# OS noise
+Thumbs.db
+desktop.ini
+.DS_Store

@@ -1,0 +1,165 @@
+# Sydney Adventist Hospital - client configuration
+# Verified against the live view 2026-07-31, AFTER the dashboard refresh completed.
+# Nothing here is code.
+
+client:
+  key: sydney_adventist
+  name: Sydney Adventist Hospital
+  state: NSW                    # the only non-Victorian client. Do not call this program "Victorian".
+  account_manager: Monali
+
+source:
+  database: Z_Sydney_Adventist            # resolved via DB_SYDNEY_ADVENTIST in .env
+  table: "[dbo].[AP_PO_Categorized_View_New]"   # 864,127 lines / 65 cols (post-refresh)
+  # CONFIRMED 2026-07-30 by Sameer as the view feeding the client dashboard.
+  # Re-verified 2026-07-31 after Monali's refresh: the view compiles again and row count moved
+  # 851,642 -> 864,127. Note the _New suffix; a plain AP_PO_View_New also exists (863,849 rows).
+
+  taxonomy_table: "[dbo].[Adventist_Taxonomy]"   # 1,429 rows - restored to its pre-refresh shape
+  taxonomy_join_column: "Master ID"              # CONFIRMED by match count: 783,413
+  rules_table: "[dbo].[PMML_Rules_Ordered]"      # 6,457 rules
+  #
+  # ** 41.7% OF THIS CLIENT IS NOT CATEGORISED BY A RULE. ** Measured 2026-07-31 (late):
+  #   141,593 of 339,204 in-scope lines carry RuleID = the literal string 'CBoard Lookup'.
+  #   That is CBORD, the food-service system - a second categorisation mechanism, not a rule.
+  #   Adding another rules table will NOT resolve them; there is nothing to resolve them to.
+  #
+  # Two consequences, and neither is cosmetic:
+  #   1. These lines have NO RULE TO FIX. Everything this project delivers on the fix side is
+  #      "here is the RuleID and what to change". For CBORD lines that output does not exist.
+  #   2. They are the WHOLE of SAH's view-vs-taxonomy drift. Restricted to lines that joined:
+  #           categorised by a PMML rule   142,629 lines   Level 3 agrees 100.0%
+  #           categorised by CBoard Lookup 135,459 lines   Level 3 agrees  23.2%
+  #      An earlier session attributed the drift to the 30 Jul taxonomy refresh. That was WRONG
+  #      and is retracted - where a real rule ran, the view and the taxonomy agree perfectly.
+  #
+  # ANSWERED 2026-08-12 by Sameer: *"yes cbord is authoritative for the food categories"*.
+  # (ACTIONS.md item C - the authority half is closed, the remediation half is not.)
+  # Measured the same day, in scope: 131,529 of 136,868 food lines (96.1%) are categorised by
+  # CBoard, the lines carry 156 distinct L1-L4 food paths, and Adventist_Taxonomy holds THIRTEEN
+  # food rows - all stubs ('Dairy > Dairy > Dairy'). The real structure exists only in CBORD:
+  #     on the line / in CBORD :  Non-Clinical > Food & Beverages > Bakery > Cake > Cake
+  #     in Adventist_Taxonomy  :  Non-Clinical > Food & Beverages > Bakery > Bakery > Bakery
+  # So for the FOOD branch only, the taxonomy table below is NOT the yardstick - the block is.
+  #
+  # STILL OPEN and NOT a taxonomy problem: those 131,529 lines have no RuleID to fix. Every fix
+  # instruction this project produces names a rule. For CBoard lines that output does not exist.
+
+  # An authoritative sub-branch: for this L1 and no other, categories come from this table.
+  authoritative_taxonomy:
+    - branch_l1: "Food & Beverages"
+      table: "[dbo].[CBORD_Taxonomy]"        # 3,683 items -> 186 distinct paths
+      levels: ["Category 0", "Category 1", "Category 2", "Category 3", "Category 4"]
+      ruled_by: "Sameer"
+      ruled_on: "2026-08-12"
+
+  columns:
+    supplier: "VENDOR NAME"     # NOTE: a SPACE, not an underscore. The other three use VENDOR_NAME.
+    spend:    "INVOICE LINE AMOUNT"
+    rule_id:  "RuleID"
+    method:   "Categorisation Method"   # captured, unused by decision
+    cat_l0:   "Category Level 0"
+    cat_l1:   "Category Level 1"
+    cat_l2:   "Category Level 2"
+    cat_l3:   "Category Level 3"
+    cat_l4:   "Category Level 4"
+
+    # --- identity: lineage back to the source line ---
+    # Fill rates are IN-SCOPE ONLY, measured 2026-07-31 on a 2,000-line spread sample. They are
+    # much lower than a leading slice suggests (which reads ~99%) - the top of this view is not
+    # representative of the indirect population.
+    source_row_id:       "RowID"                     # 100%   but 278 repeats view-wide, see notes
+    invoice_number:      "INVOICE REFERENCE NUMBER"  #  52%   <- no plain 'INVOICE NUMBER' here
+    invoice_line_number: "PO LINE NUMBER"            #  60%   <- PO lines only; not a line key
+    # invoice_id: NO INVOICE ID COLUMN EXISTS at Sydney Adventist. Deliberately unmapped.
+
+    # --- evidence: what the judge falls back on when the description is thin ---
+    gl_account:              "GL CODE"                    #  98%
+    gl_account_name:         "GL DESCRIPTION"             #  98%
+    cost_centre:             "DEPARTMENT CODE"            # 100%  <- NOT 'COST CENTRE', which is
+    #   present on the view and 100% EMPTY. The obvious-looking column is the wrong one here.
+    cost_centre_description: "BUSINESS UNIT DESCRIPTION"  #  73%  same content as DEPARTMENT
+    #   DESCRIPTION but upper-cased and better filled ('FOOD SERVICE' vs 'Food Service').
+    abn:                     "VENDOR ABN"                 #  89%  (note: not plain 'ABN')
+    supplier_number:         "VENDOR ID"                  # 100%  (note: not 'SUPPLIER NUMBER')
+    # unspsc: DELIBERATELY UNMAPPED - same finding as Melbourne, UNSPSC tracks clinical items.
+
+    # --- segmenting ---
+    invoice_date:  "INVOICE DATE"            #  52%  <- half the in-scope lines have no
+    #   invoice date. INVOICE CREATION DATE is 100% but is a load timestamp, not a business date.
+    posting_date:  "INVOICE POSTING DATE"    # 100%
+    taxonomy_key:  "MASTER CATEGORY ID"      #  98%  (joins Adventist_Taxonomy.[Master ID],
+    #                                                 confirmed 783,413 matches)
+
+  line_identity:
+    - source_row_id
+
+  # Tried in order, first non-blank wins.
+  # SAH has NO ITEM_DESCRIPTION at all - Sameer's instruction is to use INVOICE DESCRIPTION, which
+  # stays first. PO DESCRIPTION is a free fallback for lines where the invoice text is blank;
+  # because first-non-blank wins, it can only ever add coverage, never override.
+  description_fields:
+    - "INVOICE DESCRIPTION"
+    - "PO DESCRIPTION"
+
+# --- SCOPE GATE: intercompany / own-entity, excluded and reported separately ---
+scope_gate:
+  exclude_cat_l0: []            # 'Inter-Hospital Spend' is Melbourne-only; confirm in Phase 0
+  exclude_rule_ids: []
+  exclude_name_like: []
+
+# --- CLINICAL GATE: Category Level 0 already carries the split. No keywords, by design. ---
+clinical_gate:
+  enabled: true
+  column: cat_l0
+  exclude_values:
+    - "Clinical"
+
+# Provisional population, measured on Category Level 0 alone and BEFORE the refresh:
+#   Non-Clinical 279k / $298M | (null) 54k / $104M | Non-Procurement 1k / $11M
+#   ~334k lines / $0.41bn.  Now stale twice over - the view grew by ~12,500 lines in the refresh.
+#   Phase 0 must re-measure. Do not quote these figures.
+
+msd:
+  client_code: "SYD_ADV"        # verified 2026-07-30 against pi_clients (pi_client_id 18)
+  # 3,932 vendors: 2,486 unevaluated (63%) | 247 incoherent | 1,199 coherent | 78 contaminated.
+
+rules:
+  suspected_default_categories: []   # populated from profiling
+  product_categories: []
+  overhead_keywords:
+    - "VAT"
+    - "FREIGHT"
+    - " TAX"
+    - "DUTY"
+    - "CUSTOM"
+    - "ROUNDING"
+    - "INSURANCE"
+    - "INTEREST"
+    - "BANK CHAR"
+
+judge:
+  confidence_threshold: null    # null = inherit JUDGE_CONFIDENCE_THRESHOLD from .env
+  boundary_categories: []       # populated after taxonomy review
+
+notes:
+  # THE REFRESH, 2026-07-30. Monali rebuilt the dashboard. Mid-rebuild the view was unqueryable
+  # for ~45 minutes: Adventist_Taxonomy was dropped to an empty 3-column shell and the view binds
+  # to it for MASTER ID / Category Level 0-4 / Category Label. It has since been restored to
+  # 1,429 rows.
+  #   * A new Master_Taxonomy (2,998 rows) appeared alongside it, using Category Level 1-5.
+  #   * SAH did NOT move to that scheme - it still uses Category Level 0-4. Re-verified 2026-07-31.
+  #   * If a future refresh does move it, the clinical gate breaks silently for this client alone.
+  #     verify_client.py warns on unexpected Category Level 0 values, which is the tripwire.
+  #
+  # RULE PROVENANCE: only 4.8% of SAH's 6,457 rules sit in its own 'A. NH RULES' tier - and even
+  # that tier is named for Northern. 60.1% are 'C. OTHER CLIENT RULES', 19.4% E. PHARMACY,
+  # 15.7% B. UNSPSC. CONFIRMED INTENTIONAL by Sameer with Monali: NH rules were adopted to
+  # categorise faster. ~98.6% of them assign to indirects, so they sit squarely in our scope.
+  #
+  # This client also has Master Category Level 0-4 columns and a CBORD_Taxonomy (3,683 rows,
+  # food service) which is not used by this QA.
+  open_items:
+    - "Confirm the taxonomy join key by match count - MASTER CATEGORY ID -> Master ID or Category ID"
+    - "Re-measure the population after the refresh"
+    - "Confirm whether any Category Level 0 value needs a scope-gate exclusion here"

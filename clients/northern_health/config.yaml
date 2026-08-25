@@ -1,0 +1,125 @@
+# Northern Health - client configuration
+# Verified against the live view 2026-07-30. Nothing here is code.
+
+client:
+  key: northern_health
+  name: Northern Health
+  state: VIC
+  account_manager: Sakule
+
+source:
+  database: Z_Northern_Health              # resolved via DB_NORTHERN_HEALTH in .env
+  table: "[dbo].[AP_PO_Categorized_View]"  # 1,744,381 lines / 73 cols
+  # CONFIRMED 2026-07-30 by Sameer as the view feeding the client dashboard, and verified readable.
+
+  taxonomy_table: "[dbo].[NH_Taxonomy]"    # 1,449 rows
+  taxonomy_join_column: "Master ID"        # CONFIRMED by match count: 1,464,011
+  rules_table: "[dbo].[PMML_Rules_Ordered]"   # 6,697 rules
+
+  columns:
+    supplier: "VENDOR_NAME"
+    spend:    "INVOICE LINE AMOUNT"
+    rule_id:  "RuleID"
+    method:   "Categorisation Method"      # captured, unused by decision
+    cat_l0:   "Category Level 0"
+    cat_l1:   "Category Level 1"
+    cat_l2:   "Category Level 2"
+    cat_l3:   "Category Level 3"
+    cat_l4:   "Category Level 4"
+
+    # --- identity: lineage back to the source line ---
+    # Fill rates are IN-SCOPE ONLY, measured 2026-07-31 on a 2,000-line spread sample.
+    # Northern is the cleanest of the four - every identity and evidence column is 100%.
+    source_row_id:       "RowID"                  # 100%
+    invoice_number:      "INVOICE NUMBER"         # 100%
+    invoice_line_number: "INVOICE LINE NUMBER"    # 100%
+    invoice_id:          "INVOICE ID"             # 100%
+
+    # --- evidence: what the judge falls back on when the description is thin ---
+    gl_account:              "CHARGED ACCOUNT"          # 100%
+    gl_account_name:         "ACCOUNT NAME"             # 100%  <- strongest GL evidence of the four
+    cost_centre:             "CHARGED COST CENTRE"      # 100%
+    cost_centre_description: "COST CENTRE DESCRIPTION"  # 100%
+    abn:                     "ABN"                      # 100%  <- in scope; 43% across all lines
+    supplier_number:         "SUPPLIER NUMBER"          # 100%
+    # unspsc: DELIBERATELY UNMAPPED - 0.3% filled here, and clinical-only where it is populated.
+
+    # --- segmenting ---
+    invoice_date:  "INVOICE CREATION DATE"   # 100%  (no plain INVOICE DATE column at Northern)
+    posting_date:  "INVOICE POSTING DATE"    # 100%
+    taxonomy_key:  "MASTER CATEGORY ID"      #  86%  (joins NH_Taxonomy)
+
+  line_identity:
+    - source_row_id
+
+  # Tried in order, first non-blank wins. This is what the judge reads.
+  description_fields:
+    - "ITEM_DESCRIPTION"
+    - "PO LINE DESCRIPTION"
+
+# --- SCOPE GATE: intercompany / own-entity, excluded and reported separately ---
+scope_gate:
+  exclude_cat_l0: []            # 'Inter-Hospital Spend' is Melbourne-only; confirm in Phase 0
+  exclude_rule_ids: []
+  exclude_name_like: []
+
+# --- CLINICAL GATE: Category Level 0 already carries the split. No keywords, by design. ---
+clinical_gate:
+  enabled: true
+  column: cat_l0
+  exclude_values:
+    - "Clinical"
+
+# Provisional population, measured on Category Level 0 alone. Phase 0 must re-measure.
+#   Non-Clinical 494k / $801M | (null) 219k / $739M | Non-Procurement 162k / $1,431M
+#   ~875k lines / $2.97bn
+#
+# ** NORTHERN MUST BE SEGMENTED OR ITS NUMBER IS MEANINGLESS. **
+# Only $801M of the ~$2.97bn is confirmed non-clinical. $739M was never classified at all and
+# $1.43bn is rates / taxes / superannuation. A single blended accuracy figure across those three
+# populations would say nothing true about any of them.
+
+msd:
+  client_code: "NTH_HEALTH"     # verified 2026-07-30 against pi_clients (pi_client_id 11).
+                                # NOT 'NORTH_HEALTH' - the obvious guess is wrong.
+  # 3,643 vendors: 1,370 unevaluated (38%) | 337 incoherent | 1,936 coherent | 105 contaminated.
+  # Northern is by far the best-enriched of the four (38% unevaluated vs 63-75% elsewhere).
+
+rules:
+  suspected_default_categories: []   # populated from profiling
+  product_categories: []
+  overhead_keywords:
+    - "VAT"
+    - "FREIGHT"
+    - " TAX"
+    - "DUTY"
+    - "CUSTOM"
+    - "ROUNDING"
+    - "INSURANCE"
+    - "INTEREST"
+    - "BANK CHAR"
+
+judge:
+  confidence_threshold: null    # null = inherit JUDGE_CONFIDENCE_THRESHOLD from .env
+  boundary_categories: []       # populated after taxonomy review
+
+notes:
+  # TAXONOMY JOIN - verified 2026-07-30 by match count, not assumed:
+  #   [MASTER CATEGORY ID] -> NH_Taxonomy.[Master ID]  = 1,464,011 matches
+  #   [MASTER CATEGORY ID] -> NH_Taxonomy.[Category ID] =         0 matches
+  # Same pattern as Melbourne. Never infer this join from column-name similarity.
+  #
+  # 'NH Category 1' / 'NH Catagory 2' (sic) are columns of the VIEW, derived from NH_Taxonomy.
+  # They are a derived label, NOT a rival scheme. The QA target stays Category Level 0-4; NH
+  # Category rides along as an extra label for Sakule.
+  #
+  # RULE PROVENANCE: only 25.6% of Northern's 6,697 rules are 'A. NH RULES'. 40.6% are explicitly
+  # 'C. OTHER CLIENT RULES', plus E. PHARMACY 18.7% and B. UNSPSC 15.1%. Intentional - a shared
+  # rule library. Captured as an analysis dimension (error rate by Source tier), not a defect.
+  #
+  # This view also carries HSV columns (HSV ITEM NUMBER / TYPE / CODE / CONTRACT), like Melbourne.
+  open_items:
+    - "Resolve Northern's MSD client code"
+    - "Segmentation design: the accuracy report must break out non-clinical vs unclassified vs non-procurement"
+    - "Confirm whether any Category Level 0 value needs a scope-gate exclusion here"
+    - "HSV treatment at Northern - same question as Melbourne"

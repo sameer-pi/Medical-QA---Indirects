@@ -1,0 +1,165 @@
+# Western Health - client configuration
+# Verified against the live view 2026-07-29/30. Nothing here is code.
+
+client:
+  key: western_health
+  name: Western Health
+  state: VIC
+  account_manager: Dhruv
+
+source:
+  database: "Z_Western Health"              # resolved via DB_WESTERN_HEALTH in .env
+                                            # NOTE: the database name genuinely contains a space
+  table: "[dbo].[AP_PO_Categorised_View]"   # 2,347,469 lines / 56 cols
+  # CONFIRMED 2026-07-30 by Sameer as the view feeding the client dashboard, and verified readable.
+  # NOTE the spelling: Categorised with an 's'. The other three clients use 'Categorized'.
+  # Both spellings exist as separate objects across these databases - this is not a typo to fix.
+
+  taxonomy_table: "[dbo].[WH_Taxonomy]"     # 1,599 rows
+  taxonomy_join_column: "Category ID"       # CONFIRMED by match count: 2,322,868.
+  #   Western is the ONLY client joining on [Category ID] - it has no Master ID column at all.
+  # BOTH tables are required. CORRECTED 2026-07-31 - see below.
+  rules_tables:
+    - "[dbo].[PMML_Rules]"            # 2,181 rules
+    - "[dbo].[PMML_Medical_Rules]"    # 2,875 rules - NOT optional, see below
+  rules_table: "[dbo].[PMML_Rules]"   # primary, kept for anything reading the old single key
+  #
+  # CONFIRMED 2026-07-30 by Sameer. Western uses PMML_Rules, NOT PMML_Rules_Ordered:
+  # PMML_Rules_Ordered is EMPTY here (0 rows) while PMML_Rules holds 2,181. Pointing at the
+  # empty one would produce a blank fix queue that reads as "nothing to fix".
+  #
+  # ** AND PMML_Rules ALONE IS NOT ENOUGH. ** An earlier note here dismissed PMML_Medical_Rules
+  # as "out of scope, this project is indirects only". That was wrong, and it was wrong in the
+  # way that hurts most - silently.
+  #
+  #   139,244 of Western's 671,200 IN-SCOPE lines (20.7%) carry a RuleID that does not exist
+  #   in PMML_Rules. They are WH-MD#### ids living in PMML_Medical_Rules.
+  #
+  # The table name misleads: these rules are not "about medical items", they categorise a fifth
+  # of Western's NON-clinical spend. Examples:
+  #     WH-MD1961   ACCOUNT NAME CONTAINS 'CONTRACT S&W-NURSING'
+  #     WH-MD1532   VENDOR_NAME CONTAINS 'OMNI-CARE PTY LTD' AND ACCOUNT NAME CONTAINS 'PATIENT CARE'
+  #     WH-MD0664   VENDOR_NAME CONTAINS ','     <- matches ANY vendor name containing a comma
+  #
+  # Scope is decided by Category Level 0 on the LINE, never by which table the rule came from.
+  # WH-MD0664 is a rule defect in its own right and goes to the fix queue on sight.
+
+  columns:
+    supplier: "VENDOR_NAME"
+    spend:    "INVOICE DISTRIBUTION AMOUNT"
+    rule_id:  "RuleID"
+    # No 'Categorisation Method' column at Western. Irrelevant by decision - rule_id IS NULL
+    # gives the distinction that matters ("a rule ran and got it wrong" vs "no rule ran").
+    cat_l0:   "Category Level 0"
+    cat_l1:   "Category Level 1"
+    cat_l2:   "Category Level 2"
+    cat_l3:   "Category Level 3"
+    cat_l4:   "Category Level 4"
+
+    # --- identity: lineage back to the source line ---
+    # Fill rates are IN-SCOPE ONLY, measured 2026-07-31 on a 2,000-line spread sample.
+    # WESTERN HAS NO RowID. It is the only client without one - see line_identity below.
+    invoice_number:      "INVOICE NUMBER"           # 100%
+    invoice_line_number: "INVOICE LINE NUMBER"      # 100%
+    invoice_id:          "INVOICE ID"               # 100%
+    source_row_id:       "INVOICE DISTRIBUTION ID"  # 100% filled but NOT UNIQUE - see below
+
+    # --- evidence: what the judge falls back on when the description is thin ---
+    gl_account:              "EXPENSE ACCOUNT NUMBER"   # 100%  (note: NUMBER, not Melbourne's NUM)
+    gl_account_name:         "ACCOUNT NAME"             # 100%
+    cost_centre:             "CHARGED COST CENTRE"      # 100%
+    cost_centre_description: "COST CENTRE DESCRIPTION"  #  99%
+    abn:                     "ABN"                      #  94%  <- best ABN coverage of the four
+    supplier_number:         "SUPPLIER NUMBER"          # 100%
+    # unspsc: NO UNSPSC COLUMN EXISTS at Western. Deliberately unmapped.
+
+    # --- segmenting ---
+    invoice_date:  "INVOICE DATE"                          # 100%
+    posting_date:  "INVOICE DISTRIBUTION ACCOUNTING DATE"  # 100%
+    taxonomy_key:  "CATEGORY ID"                           #  94%  <- NOT 'MASTER CATEGORY ID';
+    #   Western has no master columns at all. Joins WH_Taxonomy.[Category ID], format 'WH1502'.
+
+  # NO UNIQUE LINE IDENTITY EXISTS AT WESTERN. Measured 2026-07-31 on a 50,000-line slice:
+  #   INVOICE ID + INVOICE LINE NUMBER + INVOICE DISTRIBUTION ID  -> 47,255 distinct of 50,000
+  #   INVOICE DISTRIBUTION ID alone                               -> 47,255 distinct (identical)
+  # The extra two columns add nothing. The 2,745 repeats are BYTE-IDENTICAL rows - same vendor,
+  # description, amount, category, RuleID and source file. Example: distribution id 345955046,
+  # WINC AUSTRALIA, 'CORP EXP CARD HOLDER RETRA', $11.64, twice.
+  #
+  # Consequence, and it is not cosmetic: Western's line count and spend are INFLATED by the
+  # duplicate rate. Judge units are unaffected (identical lines collapse into one unit anyway),
+  # but every per-line and per-dollar figure must be reported de-duplicated, with the raw count
+  # shown alongside. The loader must emit a surrogate key plus an ordinal within
+  # INVOICE DISTRIBUTION ID; it must NOT assume these three columns identify a row.
+  line_identity:
+    - invoice_id
+    - invoice_line_number
+    - source_row_id
+
+  # Tried in order, first non-blank wins. Western has only the one description field.
+  #
+  # ** CORRECTED 2026-07-31 (late): it is blank on 31.9% of in-scope lines, not 14%. **
+  #   214,074 of 671,200. The 14% came from a 2,000-line sample; this figure is the full in-scope
+  #   population. Nearly a THIRD of this client has no item text at all, and there is no fallback
+  #   column to compose from. Those lines are structurally unjudgeable on description and must be
+  #   reported as such, not guessed at - the judge falls back to vendor, GL account and cost centre.
+  #   This is the single biggest constraint on Western's achievable accuracy. Say so in the report.
+  # ITEM DESCRIPTION(PURCHASE ORDER) exists but covers PO lines only - test it as a fallback in
+  # Phase 0 before adding it, since a PO description can describe a different thing to the invoice.
+  description_fields:
+    - "ITEM_DESCRIPTION"
+
+# --- SCOPE GATE: intercompany / own-entity, excluded and reported separately ---
+scope_gate:
+  exclude_cat_l0: []            # 'Inter-Hospital Spend' is Melbourne-only; confirm in Phase 0
+  exclude_rule_ids: []
+  exclude_name_like: []
+
+# --- CLINICAL GATE: Category Level 0 already carries the split. No keywords, by design. ---
+clinical_gate:
+  enabled: true
+  column: cat_l0
+  exclude_values:
+    - "Clinical"
+
+# Provisional population, measured on Category Level 0 alone:
+#   Non-Clinical 612k / $837M | (null) 25k / $87M | Non-Procurement 34k / $71M
+#   ~671k lines / $0.99bn.  Phase 0 must re-measure. Do not quote these figures.
+
+msd:
+  client_code: "WESTERN_HEALTH"   # verified 2026-07-30 against pi_clients (pi_client_id 17)
+  # 9,809 vendors: 7,349 unevaluated (75%) | 429 incoherent | 2,031 coherent | 115 contaminated.
+  # The dominant MSD gap here is ABSENT data, not wrong data - see RUN_LOG.md.
+
+rules:
+  suspected_default_categories: []   # populated from profiling
+  product_categories: []
+  overhead_keywords:
+    - "VAT"
+    - "FREIGHT"
+    - " TAX"
+    - "DUTY"
+    - "CUSTOM"
+    - "ROUNDING"
+    - "INSURANCE"
+    - "INTEREST"
+    - "BANK CHAR"
+
+judge:
+  confidence_threshold: null    # null = inherit JUDGE_CONFIDENCE_THRESHOLD from .env
+  boundary_categories: []       # populated after taxonomy review
+
+notes:
+  # Western is the structurally weakest client. Three things the other three have and it does not:
+  #   1. No 'Category Description' in WH_Taxonomy - confirmed genuinely absent, not an extract
+  #      fault. The judge runs on the category path plus sibling categories alone, which hurts
+  #      boundary calls specifically. Phase 0 measures whether definitions can be recovered by
+  #      matching WH category paths against MH/NH/Adventist paths that do carry descriptions.
+  #   2. No 'Master ID' / 'Master Category' - the taxonomy join uses 'Category ID' instead and
+  #      works (values look like WH1502). Only cross-client roll-up is affected, not the QA.
+  #   3. No 'Master Category Level' columns in the view, and no RowID.
+  # Expect lower judge confidence and a larger review queue here than at the other three.
+  # Report the gap rather than hide it. Consider Western last in the rollout.
+  open_items:
+    - "Duplicate taxonomy definitions: WH0001 and WH0002 hold identical category paths"
+    - "Confirm whether any Category Level 0 value needs a scope-gate exclusion here"
