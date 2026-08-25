@@ -233,7 +233,22 @@ October.** The three models run on NVIDIA's hosted endpoint, not on your hardwar
 out and wait. **The desktop's job is UPTIME, not throughput.** 16 workers is where the jury starts
 silently dropping models, not where the speed limit is, so more compute buys nothing.
 
-🔴 **NOT DECIDED, AND NOTHING IS PUSHED — this is the first thing to settle tomorrow.** There is **no repo, no remote, no commit**; this folder has never been a git repository. I wrote *"pull the branch"* into three separate hand-offs before checking, and you caught it. Three options, your call:
+✅ **SETTLED 2026-08-26 — THE REPO EXISTS AND IS PUSHED.**
+
+```
+github.com/sameer-pi/Medical-QA---Indirects     PRIVATE (verified by query)
+branch main · 79 files · commit 6bfeaa0
+```
+
+🔒 **PRIVATE, and it must stay that way.** The docs name all four hospitals across 67 files and quote their spend, their data-quality defects and vendor names that include individuals with employee numbers.
+
+✅ **Verified on the REMOTE, not assumed:** `.env` and `.env.bak` are absent. The only env files up there are the two `.env.example` templates, both read first — every credential field blank.
+
+⚠️ **The desktop clones to a NON-SYNCED local path** (e.g. `C:\work\medical-qa`), never inside the SharePoint library — the sync client can corrupt `.git`, and a 40-day run writing logs into a synced folder throws conflict-copies. ⚠️ **This working copy IS inside the synced library**, which is tolerable for editing but is why the run machine gets its own clone.
+
+🔴 **`.env` does NOT travel with the clone — copy it across by hand, once, never through git.**
+
+~~NOT DECIDED, AND NOTHING IS PUSHED.~~ There is **no repo, no remote, no commit**; this folder has never been a git repository. I wrote *"pull the branch"* into three separate hand-offs before checking, and you caught it. Three options, your call:
 
 1. **GitHub private repo** *(my recommendation)* — `gh` is already authenticated as `sameer-pi`, so create-and-push is minutes. The desktop clones to a **non-synced** local path. ⚠️ 18 MB including docs naming all four hospitals and their spend would go to GitHub — **private only**.
 2. **The SharePoint library may already sync to that desktop** — zero work if it does, but the run would write into a synced folder for 40 days (OneDrive conflict-copies) and `.env` rides along.
