@@ -14377,3 +14377,87 @@ LAPTOP. The desktop is a different machine — outbound 587 may be filtered, the
 absent, the clone path may be inside a syncing folder. **Step 4 of the runbook, `preflight.py
 --production`, is what turns those from assumptions into an answer**, and it is deliberately a
 separate step rather than folded silently into the launcher.
+
+
+---
+
+## Finding 138 — 2026-08-27 — **the launcher proven against PRODUCTION, and what the first launch does and does NOT do**
+
+Sameer clones to the office desktop after lunch. He confirmed the three machine prerequisites
+himself: ODBC Driver 17 installed, outbound HTTPS to the NVIDIA API, network to the SQL server.
+`preflight.py --production` re-checks all three regardless, and the launcher refuses to start
+anything if it fails.
+
+### 1. THE LAUNCH PATH IS PROVEN, NOT JUST THE CANCEL PATH
+
+The cancel path was tested first (preflight 13/13, gate reached, `Cancelled. Nothing was started.`).
+⚠️ **That proved nothing about whether typing YES works** — and batch quoting around a redirect
+inside `start` is exactly where these break silently. So the launcher's exact command shape was run
+against **production** with `--dry-run`:
+
+```
+supervisor starting  (PRODUCTION)
+interlock: no judge process running        OK
+interlock: supervisor lock taken (PID 39060)
+judge command: ...
+im_judge.py --queue --production
+unjudged at start: 2,786,018
+DRY RUN - every interlock passed, launching nothing.
+```
+
+**Every interlock passed against the real database, the redirect produced its log, the lock was
+released cleanly and no process was left behind.** The only reason it did not judge is that it was
+told not to.
+
+### 2. 🔴 `--top 100` IS A HARD STOP, NOT A FIRST PHASE — A SECOND LAUNCH IS REQUIRED
+
+Sameer, and it is the obvious reading: *"in due course of time it does finish 100% of the job
+right?"* **No.** The launcher runs `--top 100`; the judge finishes those 100 vendors, prints its
+summary and **exits**. Vendor 101 is never touched. Left alone it sits at 17.3% for ever.
+
+```
+                  --top 100 (launch 1)          full run (launch 2, no --top)
+vendors                 100 of 29,469  0.34%              29,469
+lines               483,313 of 2,786,018  17.3%        2,786,018
+SIGNED spend   $3,927,062,718 of $5,869,499,895  66.9%   $5,869,499,895
+```
+
+🔑 **0.34% of the vendors carries 66.9% of the signed spend** — which is the spend-weighted order
+doing exactly what it was built for. Top five: ATO $943.5m (232 lines) · Northern's no-vendor-name
+pool $608.4m · PayClear $329.3m · ISS Health $125.2m · VMIA $87.1m.
+
+✅ **Launch 2 wastes nothing** — Finding 135's resume skips the 100 finished vendors in 0.41 s and
+starts at #101. **Two deliberate launches, and the second one is Sameer deciding the first looked
+right.** He chose to keep the slice: *"yeah lets do the top 100 first, keep it as is"*.
+
+### 3. ⚠️ "JUDGED 100%" IS NOT "ANSWERED 100%" — re-measured on production, not quoted
+
+```
+melbourne_health   148,760 of   893,173   16.7%
+northern_health     12,202 of   875,018    1.4%
+sydney_adventist     54,957 of   346,627   15.9%
+western_health     214,133 of   671,200   31.9%   <- nearly a third
+TOTAL              430,052 of 2,786,018   15.4%   have NO usable item text
+```
+
+Under the evidence hierarchy — no GL, no cost centre — **those resolve to `Uncertain` and route to an
+analyst.** So at the end: 100% of lines judged, ~15% returned as *a human must look*, and Uncertain
+sits outside the accuracy figures entirely. **The accurate sentence for a manager is "a firm verdict
+on roughly 85% of lines", never "100% judged" unqualified.** ⚠️ CLAUDE.md carries 14.1%; production
+measures **15.4%**, so quote this one. Western at 31.9% is a data-quality difference between
+hospitals, not a judge difference, and it will show on the dashboard per hospital.
+
+### 4. Timeline
+
+**~40 days (38-42)** of running, from three measurements: 124 lines/min (superseded outlier),
+52, and 46. Sameer asked about four months — that is roughly triple, so it absorbs crashes,
+weekends off and half throughput and still lands inside.
+
+**Next session starts here:**
+1. **Sameer clones to the desktop after lunch.** Runbook is `ACTIONS.md`, top section, five steps.
+2. **After launch 1 finishes (~a day), look at real verdicts BEFORE launch 2.** Get the true
+   Uncertain split rather than the 15.4% projection above.
+3. `MONITOR_SMTP_PASS` still blank. `AUTH LOGIN` is offered by the server, so an app password
+   should be enough with no IT ticket. **Re-run `fire_alert.py` ON THE DESKTOP** — 587 may be
+   filtered there and preflight does not check SMTP.
+4. Eight interlock-test `supervise-*.log` files stay UNCOMMITTED on the laptop.
