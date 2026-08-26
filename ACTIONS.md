@@ -1,6 +1,42 @@
 # ACTIONS — what Sameer needs to do
 
-**As at 26 August 2026.** Everything not listed here is on me.
+**As at 27 August 2026.** Everything not listed here is on me.
+
+---
+
+## 🟢 MOVING TO THE OFFICE DESKTOP — the whole thing, five commands
+
+Sameer, 2026-08-27: *"i clone the repo, run a few easy commands that you ask me to do, and the judge
+starts judging, thats how seamless i want it."* This is that list.
+
+```
+1   git clone https://github.com/sameer-pi/Medical-QA---Indirects.git
+        ⚠️ to a NON-SYNCED path — C:\QA\ is fine. NOT OneDrive or the Teams folder:
+        a sync client rewriting files under a running judge is a failure nobody would diagnose.
+
+2   copy .env into the folder BY HAND (Teams). It is not in the repo and never will be.
+
+3   pip install -r requirements.txt
+        pyodbc + PyYAML is all the run needs. ⚠️ pip CANNOT install the ODBC driver —
+        "ODBC Driver 17 for SQL Server" must be on the machine already. Step 4 checks.
+
+4   python pipeline\preflight.py --production
+        Ten seconds, thirteen checks. It names anything missing instead of failing at 2am.
+
+5   START-PRODUCTION-RUN.cmd          ← double-click it
+        Re-runs preflight, asks you to type YES, then starts the supervisor, the monitor
+        and the dashboard. Nothing starts unless preflight passes.
+```
+
+**Then check the page says `PRODUCTION` and names `PI_Medical_QA_Indirect`.** It labels its own
+database. If it says *pilot*, stop and ask — a pilot page reads 100% complete and perfectly healthy
+while production sits untouched, which is the one way this misleads you.
+
+🔒 **Run the .cmd twice by accident and nothing bad happens** — `supervise.py` has four interlocks and
+refuses to start a second judge. **ONE JUDGE AT A TIME**, and both machines reach the same database.
+
+⚠️ **`MONITOR_SMTP_PASS` is still blank**, so the page reddens on a stall but no email leaves. That is
+§ 0 below and it does not block any of the above.
 
 ---
 
@@ -22,6 +58,28 @@ your normal mailbox password will not work. One of these has to happen:
 2. **IT enables `SMTP AUTH` on the `sameer@p-i.com.au` mailbox** — it is a per-mailbox setting.
 
 Paste it **without the spaces** Microsoft displays it with.
+
+✅ **AND THE SERVER HAS NOW CONFIRMED IT WILL ACCEPT ONE — measured 2026-08-27, so route 1 above is
+very likely enough and route 2 probably is not needed.** The alert was fired for real against the
+live config: it refused to send, correctly, naming the blank password. Then the mail server was
+probed on its own:
+
+```
+DNS           smtp.office365.com -> 40.99.130.210
+TCP :587      connected                      STARTTLS   encrypted OK
+AUTH methods  LOGIN XOAUTH2
+```
+
+**`AUTH LOGIN` IS OFFERED**, which means Microsoft will accept a username-and-password login on this
+connection — an app password should work with no IT ticket. **Everything from this machine up to the
+login is proven; the password is the only remaining variable.**
+
+⚠️ **NO LOGIN WAS ATTEMPTED, deliberately.** A failed authentication counts towards Microsoft 365
+lockout, and with a blank password there is nothing to learn by trying.
+
+⚠️ **AND THIS WAS THE LAPTOP, NOT THE OFFICE DESKTOP.** Outbound 587 could be filtered there and not
+here, and `preflight.py` does not check SMTP. **Re-run the same test on the desktop** —
+`scratchpad/fire_alert.py` is the script — before trusting the alert on the real run.
 
 **The host was verified, not guessed.** `p-i.com.au` resolves MX to
 `pi-com-au0c.mail.protection.outlook.com` and its SPF includes `spf.protection.outlook.com`, so the

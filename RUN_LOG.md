@@ -14275,3 +14275,105 @@ the skip and the judge drifting apart.
 ✅ **And it was a real repair, not only a test: thin juries 32 → 1.** One line survives — a vendor
 where a model keeps returning something that is not a verdict, which is Finding 131's defect showing
 its face again rather than a fault in the resume. Noted, not chased.
+
+
+---
+
+## Finding 136 — 2026-08-27 — 🔴 **the preview email went out from a PERSONAL GMAIL that is not Sameer's, and the log recorded the one fact that did not matter**
+
+Sameer, opening the session: *"i received the email from Saad Abbas <saadabbass84@gmail.com>, can you
+confirm or talk me through from where did you pick up the email id from?"*
+
+**Answer: from nowhere in this project.** `grep -rni` over the whole repo — code, docs, `.env`,
+`.env.example` — returns **zero hits** for that address. It was never sourced, never chosen, never
+seen. **It is the identity of the Claude Gmail connector**, and the tool sends as whoever is
+authenticated to it. The RECIPIENT was his, given in his own message; the SENDER was decided by the
+connector.
+
+**Why that channel at all:** `MONITOR_SMTP_PASS` was blank, so `monitor.py` could not send. He asked
+to see the email. I used the only channel available — and did not check what it was.
+
+🔑 **THE REAL DEFECT IS THE LOG ENTRY, NOT THE EMAIL.** Finding 134 recorded: *"It went out
+through a different channel and proves nothing about the monitor's own sending path."* Every word
+true. **It names the least important fact and omits the only one a reader would want** — which
+channel, and sending as whom. **He found out by looking at his inbox, which is the wrong way round.**
+A record that is technically accurate and practically useless is not a record; the test is whether
+the next reader learns the thing that would change what they do.
+
+⚠️ **AND IT UNDERMINED THE VERY THING THE EMAIL EXISTED TO ESTABLISH.** The point of a preview is an
+alert he will TRUST at 2am on day 30 of an unattended run. **An alert arriving from an unidentified
+personal Gmail is the opposite of that** — it trains the reader to distrust the channel.
+
+**WHAT ACTUALLY LEFT, read from the sent message rather than recalled:**
+
+```
+real       database name PI_Medical_QA_Indirect · total line count 2,786,018
+invented   118,432 judged · the timestamp · the 47-minute stall   (labelled ILLUSTRATIVE)
+absent     no hospital names · no vendor data · no spend · no credentials · no server host
+```
+
+✅ **No client data and no secrets.** ⚠️ **But a copy sits in that Gmail account's Sent folder**, which
+is outside company control, and it carries our internal database name and true row count.
+
+✅ **THE RUN IS UNAFFECTED, MEASURED NOT ASSUMED.** `grep -rniE "gmail|googleapis|oauth|mcp"` over
+`pipeline/` returns **nothing**. `monitor.py` sends via `smtplib` to `MONITOR_SMTP_HOST` with
+`From: MONITOR_ALERT_FROM` — Sameer's own mailbox. **No external mail path exists in the code**, so
+nothing during the 40-day run can leave that way. The monitor has still never sent anything.
+
+🔒 **STANDING RULE FROM THIS, and it is not about email:** *when a task is completed through a
+channel outside the project's own plumbing, NAME THE CHANNEL AND THE IDENTITY IT ACTED AS, in the
+message and in the log, BEFORE it is used.* The same reasoning as `taxonomy_source` on every loaded
+row — **a route must be visible in the record, not merely absent from the objections.**
+
+**Open, and Sameer's call:** whether to delete that message from the Gmail account's Sent folder, and
+whether the Gmail connector should be attached to this work at all.
+
+
+---
+
+## Finding 137 — 2026-08-27 — **a fresh clone would NOT have run, and three separate things would have stopped it**
+
+Sameer set the standard: *"i clone the repo, run a few easy commands that you ask me to do, and the
+judge starts judging, thats how seamless i want it."* **Checking what a clone actually breaks on
+found three faults, none of which anything would have reported until the desktop hit them.**
+
+```
+1  NO requirements.txt          a fresh machine has no pyodbc. First import, traceback, no message.
+2  rule_overlap.py line 17      sys.path.insert of an ABSOLUTE PATH to this laptop. Crashes anywhere
+                                else. Every other script resolves its own directory; this one did not.
+3  no launcher                  three commands, each needing --production typed from memory
+```
+
+✅ **Fixed: `requirements.txt`, the path, and `START-PRODUCTION-RUN.cmd`.**
+
+🔑 **AND THE DEPENDENCY LIST WAS MEASURED RATHER THAN COPIED FROM THE IMPORTS.** Of the nine modules
+on the run path, **only `db.py` imports pyodbc and only `clientcfg.py` imports yaml**. Nothing between
+a clone and a judged line touches pandas or openpyxl — those belong to the workbook and taxonomy
+tools. The file says which is which, so the desktop installs two packages rather than four.
+⚠️ **And it states the thing pip cannot do: install the ODBC driver.** `pyodbc` without the driver
+imports cleanly and then fails to connect, which reads like a network problem and is not one.
+
+**THE DEFAULT WAS NOT FLIPPED, AND THAT WAS THE REAL DECISION.** Sameer proposed pointing the tools
+at production by default so there is no flag to forget — *"thats not a flag, why dont you connect it
+now to the actual database"*. **Declined, for a reason that is about his goal rather than about
+purity: it would not have worked.** He runs THREE commands on the desktop, and the one that
+matters — `supervise.py`, which writes 2.79M rows — would still have needed `--production`. Flipping
+only the read-only tool leaves the flag required exactly where forgetting it costs something, while
+making `no flag` mean production in one tool and pilot in another. 🔒 It would also have carved an
+exception into `db.py`'s second lock, *production must be asked for on purpose*, which
+`test_guards.py` pins with 20 checks — and an exception made for convenience is one that spreads.
+
+**So the flag is written down ONCE, in the launcher, where it can be read and reviewed.** The .cmd
+re-runs preflight, refuses to start anything if it fails, requires `YES` typed at a prompt before
+committing ~40 days of compute, then starts the supervisor and the monitor in SEPARATE windows —
+unpiped, because a pipe reported exit code 0 on the real crash in Finding 133.
+
+**Tested by running it and cancelling at the prompt:** preflight passed 13/13, the gate was reached,
+`Cancelled. Nothing was started.` **Verified by process query afterwards** — the only python process
+alive was yesterday's PILOT monitor, and the launcher had started nothing.
+
+⚠️ **WHAT IS STILL UNPROVEN, and it is unprovable from here:** every one of these checks ran on the
+LAPTOP. The desktop is a different machine — outbound 587 may be filtered, the ODBC driver may be
+absent, the clone path may be inside a syncing folder. **Step 4 of the runbook, `preflight.py
+--production`, is what turns those from assumptions into an answer**, and it is deliberately a
+separate step rather than folded silently into the launcher.

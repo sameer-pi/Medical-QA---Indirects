@@ -1,0 +1,33 @@
+# Python packages this project needs. Install with:
+#
+#     pip install -r requirements.txt
+#
+# WHY THIS FILE EXISTS. It did not, until 2026-08-27. The judging run moves to an office desktop
+# that starts from a fresh `git clone`, and a clone with no dependency list is a clone that stops
+# at the first import with a traceback instead of a message. Found by checking what a clone breaks
+# on, not by anyone hitting it.
+
+# ---------------------------------------------------------------------------------------------
+# THE RUN PATH - preflight, the judge, the supervisor, the monitor. THESE TWO ARE ALL IT NEEDS.
+# ---------------------------------------------------------------------------------------------
+# Measured, not assumed: of the nine modules on the run path, only db.py imports pyodbc and only
+# clientcfg.py imports yaml. Nothing on the path to judging a line touches pandas or Excel.
+pyodbc>=5.0
+PyYAML>=6.0
+
+# ---------------------------------------------------------------------------------------------
+# THE WORKBOOK AND TAXONOMY TOOLS - NOT needed to run the judge.
+# ---------------------------------------------------------------------------------------------
+# make_review_workbook.py, make_answer_key.py, merge_taxonomy.py, taxonomy_draft.py, dashboard.py.
+# Install them on the desktop only if you intend to build deliverables there; the 40-day run does
+# not. Kept in one file rather than two so there is one place to look.
+pandas>=2.0
+openpyxl>=3.1
+
+# ---------------------------------------------------------------------------------------------
+# NOT A PYTHON PACKAGE, AND pip WILL NOT INSTALL IT: the ODBC driver.
+# ---------------------------------------------------------------------------------------------
+# "ODBC Driver 17 for SQL Server" must be installed on the machine itself, from Microsoft.
+# pyodbc is only the bridge to it - installing pyodbc without the driver gives you a clean import
+# and a connection failure, which reads like a network problem and is not one.
+# preflight.py checks for the driver by name and will tell you if it is missing.

@@ -13,9 +13,11 @@ Read-only. Every query runs inside that one client's connection, two-part names 
 import os
 import sys
 
-sys.path.insert(0, os.path.join(
-    r"C:\Users\SameerIyer\Comprara\Comprara & PI - Team shared folder - Documents\Sameer"
-    r"\01.Claude\Medical QA - Indirects", "pipeline"))
+# 🔴 THIS WAS AN ABSOLUTE PATH TO THE LAPTOP THIS FILE WAS WRITTEN ON, and it would have crashed on
+# the office desktop the first time anyone ran it from a fresh clone. Fixed 2026-08-27 while
+# checking what a clone actually breaks on. Every other script in here already resolves its own
+# directory; this one did not, and nothing would have said so until it failed.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import clientcfg  # noqa: E402
 from db import connect_client, load_env  # noqa: E402
 
