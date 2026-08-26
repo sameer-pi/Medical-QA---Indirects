@@ -384,7 +384,16 @@ CREATE TABLE qa_vendor_queue (
   -- lines with NEITHER a vendor name NOR a usable description. No evidence exists, so the
   -- hierarchy resolves them to Uncertain - stated in advance, on the row.
   HAS_NO_EVIDENCE   bigint         NULL,
-  QUEUE_STATUS      nvarchar(32)   NULL,       -- pending | in_progress | done
+  -- pending | in_progress | done. ⚠️ AS AT THE BUILD, AND NOTHING EVER UPDATES IT. vendor_queue.py
+  -- derives it from qa_line once, when the queue is written; nim_judge.py does not contain the
+  -- string QUEUE_STATUS at all. It is a PHOTOGRAPH, correct for as long as it takes the judge to
+  -- write its first verdict and drifting for the rest of the run. Measured 2026-08-26 on the fully
+  -- judged pilot: it read western_health 6 done / 179 pending while qa_line said 0 unjudged of 500.
+  -- 🔒 NEVER READ IT FOR PROGRESS. Progress is NIM_VERDICT on the line, which cannot go stale -
+  -- monitor.py counts vendors with zero unjudged lines, and nim_judge.vendors_with_work() decides
+  -- what a resume still has to do. Kept, not dropped: it is a true record of the build, and
+  -- LINES_UNJUDGED beside it carries the same caveat and the same wording.
+  QUEUE_STATUS      nvarchar(32)   NULL,
   BUILT_AT          datetime2(0)   NULL,
   CONSTRAINT pk_qa_vendor_queue PRIMARY KEY (RUN_ID, CLIENT_CODE, VENDOR_KEY)
 );
@@ -449,6 +458,13 @@ GO
    RULES_TABLE IS NOT OPTIONAL. A rule ID names independent COPIES in different hospitals: fixing
    MEL-0881 in Northern's table does nothing to Melbourne's. A fix instruction that does not name
    the table it applies to cannot be actioned.
+
+   🆕 NIM_JUDGED_AT + NIM_PROMPT_VERSION ADDED 2026-08-26 at Sameer's instruction. The view went
+   36 -> 38 columns. Reasoning is beside the columns themselves, lower down; the short version is
+   that THE VIEW COULD SAY WHAT WAS JUDGED AND NEVER WHEN, which over a ~40-day run means a reader
+   cannot tell a live number from a stale one. ⚠️ They were an OMISSION, not a decision - absent
+   from the list below as well as from the SELECT, so nothing recorded that they had been left out.
+   Found by measuring the view's columns against the table's, not by reading either.
 
    WHAT IS DELIBERATELY ABSENT, so nobody re-adds it as an oversight:
      GL_ACCOUNT, GL_ACCOUNT_NAME, COST_CENTRE, COST_CENTRE_DESCRIPTION
@@ -545,6 +561,33 @@ SELECT
       + COALESCE(' > ' + NULLIF(CASE WHEN LTRIM(RTRIM(ISNULL(l.NIM_SUGGESTED_CATEGORY_LVL_4,''))) LIKE '(%'
                  THEN '' ELSE LTRIM(RTRIM(ISNULL(l.NIM_SUGGESTED_CATEGORY_LVL_4,''))) END,''),'')
     , 1, 3, '') AS SUGGESTED_CATEGORY_PATH,
+
+    /* WHEN we judged it, and under WHICH RULEBOOK. Added 2026-08-26 at Sameer's instruction.
+
+       🔑 THESE WERE AN OMISSION, NOT A DECISION. Every other column absent from this view is listed
+       in the block at the top with the reason it was left out. These two were in neither list -
+       they were simply never carried across when the view was written on 2026-08-24, and nothing
+       said so. Found by measuring the view against the table rather than by reading either.
+
+       NIM_JUDGED_AT - the view could say WHAT was judged and never WHEN. Over a ~40-day run that
+       is the difference between "4,000 lines judged" and "4,000 lines judged, the last one nine
+       hours ago, the judge is dead". A reader opening THE ONE VIEW had no way to tell whether the
+       numbers in front of them were from this morning or from last Tuesday. It is also what any
+       live progress monitor rests on: last-verdict-written, lines/min, and the projected finish
+       date are all this column.
+
+       ⚠️ IT IS NOT A TRANSACTION DATE AND MUST NEVER BE READ AS ONE. It is when the JUDGE wrote
+       the row, not when the hospital bought anything. The line's own date is deliberately absent
+       from this view - INVOICE_DATE is free text and 52% empty at Sydney Adventist, as the block
+       at the top says. Two different clocks; only one of them is here.
+
+       NIM_PROMPT_VERSION - the judge's rulebook version. 🔒 IF TWO VALUES EVER APPEAR IN ONE RUN,
+       STOP: verdicts either side of a prompt bump are not comparable, and v3 -> v4 is not
+       comparable at all on lines with no usable item text. That check was impossible from the view
+       until now. It sits beside NIM_JUDGED_AT because the pair answers one question - "when, and
+       under what rules" - and a version with no timestamp cannot tell you WHICH rows moved. */
+    l.NIM_JUDGED_AT,
+    l.NIM_PROMPT_VERSION,
 
     /* the analyst layer - status and the LATEST date only */
     l.REVIEW_STATUS,

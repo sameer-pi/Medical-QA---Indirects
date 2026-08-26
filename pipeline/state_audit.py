@@ -131,19 +131,41 @@ def main():
     # defect as PLAN.md's status section (RUN_LOG Finding 97): a status surface that nothing
     # measured against reality. Two verdict layers coexist in qa_line and a reader shown only one
     # of them draws the wrong conclusion about where the project is.
+    # 🔴 'jury<3' IS COUNTED FROM THE VOTES, NOT FROM nim_models_responded. Fixed 2026-08-26.
+    #
+    # That column counts any non-empty answer as a vote, and google/gemma-4-31b-it returns
+    # 'Uncategorised' / 'categorised' - words that are not verdicts. So 86 of 1,801 judged pilot
+    # lines (4.78%) are STORED as a full three-model jury while holding two valid votes, and this
+    # audit printed "jury health: 16 of 2,000 (0.8%) OK" when the true figure was 5.6%.
+    #
+    # 🔑 THIS FILE EXISTS TO CHECK THE DOCS AGAINST REALITY, AND IT WAS ITSELF READING A COLUMN
+    # THAT LIED. A check built on an unverified number is not a check. It now derives the answer
+    # from NIM_1/2/3_VERDICT directly - the same discipline as 'a guarantee must be measured
+    # against something outside the process'.
+    #
+    # BOTH numbers are printed when they differ, because the gap is the finding: 'stored' is what
+    # qa_line claims and 'real' is what the votes hold. nim_judge.responded() is fixed too, so the
+    # two converge for every line judged from 2026-08-26 onward - but old rows keep the old value.
     cur.execute("""SELECT client_code, COUNT(*),
                           SUM(CASE WHEN nim_verdict IS NULL THEN 1 ELSE 0 END),
                           SUM(CASE WHEN nim_verdict = 'Correct'   THEN 1 ELSE 0 END),
                           SUM(CASE WHEN nim_verdict = 'Incorrect' THEN 1 ELSE 0 END),
                           SUM(CASE WHEN nim_verdict = 'Uncertain' THEN 1 ELSE 0 END),
+                          SUM(CASE WHEN nim_verdict IS NOT NULL AND (
+                                CASE WHEN nim_1_verdict IN ('Correct','Incorrect','Uncertain')
+                                     THEN 1 ELSE 0 END
+                              + CASE WHEN nim_2_verdict IN ('Correct','Incorrect','Uncertain')
+                                     THEN 1 ELSE 0 END
+                              + CASE WHEN nim_3_verdict IN ('Correct','Incorrect','Uncertain')
+                                     THEN 1 ELSE 0 END) < 3 THEN 1 ELSE 0 END),
                           SUM(CASE WHEN nim_models_responded < 3  THEN 1 ELSE 0 END)
                    FROM qa_line GROUP BY client_code ORDER BY client_code""")
     print(f"  {'client':20} {'lines':>7} {'unjudged':>9} {'Correct':>8} {'Incorrect':>10} "
           f"{'Uncertain':>10} {'jury<3':>8}")
-    n_lines = n_unj = n_hollow = 0
+    n_lines = n_unj = n_hollow = n_stored = 0
     for r in cur.fetchall():
         print(f"  {r[0]:20} {r[1]:>7,} {r[2]:>9,} {r[3]:>8,} {r[4]:>10,} {r[5]:>10,} {r[6] or 0:>8,}")
-        n_lines += r[1]; n_unj += r[2]; n_hollow += (r[6] or 0)
+        n_lines += r[1]; n_unj += r[2]; n_hollow += (r[6] or 0); n_stored += (r[7] or 0)
     print(f"  {'TOTAL':20} {n_lines:>7,} {n_unj:>9,} {'':>8} {'':>10} {'':>10} {n_hollow:>8,}")
 
     cur.execute("SELECT nim_action, COUNT(*) FROM qa_line GROUP BY nim_action ORDER BY 2 DESC")
@@ -155,9 +177,48 @@ def main():
     # exists to catch is gradual (11 lines at 16 workers, 102 at 48). See RUN_LOG Finding 95.
     if n_lines:
         pct = 100.0 * n_hollow / n_lines
-        flag = "OK" if pct <= 1.0 else "** ABOVE 1% - the jury is hollowing out, check --workers **"
-        print(f"  jury health: {n_hollow} of {n_lines:,} lines judged by fewer than 3 models "
+        # 🔑 TWO CAUSES, TWO REMEDIES, AND THEY MUST NOT BE ADDED TOGETHER AND HANDED ONE PIECE OF
+        # ADVICE. A thin jury happens either because a model NEVER ANSWERED - throttling, the
+        # --workers problem measured in Finding 95 - or because it ANSWERED WITH A NON-VERDICT,
+        # which is a model/prompt problem and which lowering --workers would not touch. Before
+        # 2026-08-26 the second cause was invisible; the moment it became visible, the old
+        # "check --workers" line started giving the wrong remedy for most of the number.
+        cur.execute("""SELECT
+              SUM(CASE WHEN nim_verdict IS NOT NULL AND (
+                    CASE WHEN nim_1_verdict IS NULL THEN 1 ELSE 0 END
+                  + CASE WHEN nim_2_verdict IS NULL THEN 1 ELSE 0 END
+                  + CASE WHEN nim_3_verdict IS NULL THEN 1 ELSE 0 END) > 0 THEN 1 ELSE 0 END),
+              SUM(CASE WHEN nim_verdict IS NOT NULL AND (
+                    CASE WHEN nim_1_verdict IS NOT NULL AND nim_1_verdict
+                              NOT IN ('Correct','Incorrect','Uncertain') THEN 1 ELSE 0 END
+                  + CASE WHEN nim_2_verdict IS NOT NULL AND nim_2_verdict
+                              NOT IN ('Correct','Incorrect','Uncertain') THEN 1 ELSE 0 END
+                  + CASE WHEN nim_3_verdict IS NOT NULL AND nim_3_verdict
+                              NOT IN ('Correct','Incorrect','Uncertain') THEN 1 ELSE 0 END)
+                   > 0 THEN 1 ELSE 0 END)
+              FROM qa_line""")
+        n_silent, n_invalid = (x or 0 for x in cur.fetchone())
+        flag = "OK" if pct <= 1.0 else "** ABOVE 1% **"
+        print(f"  jury health: {n_hollow} of {n_lines:,} lines have fewer than 3 VALID votes "
               f"({pct:.1f}%)  {flag}")
+        if n_hollow:
+            print(f"       {n_silent:,} line(s): a model NEVER ANSWERED  "
+                  f"-> throttling. Check --workers (Finding 95: 16 is the ceiling)")
+            print(f"       {n_invalid:,} line(s): a model answered with a NON-VERDICT  "
+                  f"-> a model/prompt problem. --workers will NOT help")
+        # 🔴 THE GAP BETWEEN WHAT qa_line CLAIMS AND WHAT IT HOLDS. Silent when they agree.
+        if n_hollow != n_stored:
+            print(f"  ** NIM_MODELS_RESPONDED claims only {n_stored} - it counts a non-verdict as "
+                  f"a vote, so {n_hollow - n_stored} line(s) are STORED as a full jury while "
+                  f"holding two. **")
+            cur.execute("""SELECT nim_3_model, nim_3_verdict, COUNT(*) FROM qa_line
+                           WHERE nim_3_verdict IS NOT NULL
+                             AND nim_3_verdict NOT IN ('Correct','Incorrect','Uncertain')
+                           GROUP BY nim_3_model, nim_3_verdict ORDER BY COUNT(*) DESC""")
+            for mdl, bad, n in cur.fetchall():
+                print(f"       {mdl} returned {bad!r} on {n:,} line(s)")
+            print("     nim_judge.responded() is FIXED (2026-08-26) so this cannot grow, but the "
+                  "fix is forward-only - existing rows keep the old value unless re-judged.")
 
     print("\n=== JUDGING PROGRESS - CLAUDE's OLDER LAYER (superseded, kept for comparison) ===")
     cur.execute("""SELECT client_code, COUNT(*),

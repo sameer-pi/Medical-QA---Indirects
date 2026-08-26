@@ -202,11 +202,25 @@ def main():
         print("\n  GO, with %d warning(s): %s" % (len(warn), ", ".join(warn)))
     else:
         print("\n  ** GO ** - this machine can run the judge.")
+    # 🔴 THIS USED TO SAY `nim_judge.py --queue ... --production` - THE BARE JUDGE. Corrected
+    # 2026-08-26, and it was a trap rather than a preference: the judge holds ONE database
+    # connection with no reconnect and died after ~2 hours on a dropped TCP socket (Finding 133).
+    # supervise.py exists BECAUSE of that. A GO screen that names the unsupervised command is a GO
+    # screen that tells whoever reads it on the morning of the run to do the thing we already know
+    # stops overnight. The advice a check prints is part of the check.
     print("""
   Next, and launch it DETACHED - not inside a chat window, or closing the
-  window stops it (it resumes with nothing lost, but the hours are gone):
+  window stops it (it resumes with nothing lost, but the hours are gone).
+  NOT PIPED, EITHER - a pipe reports exit code 0 on a crash (Finding 133):
 
-      python pipeline/nim_judge.py --queue --top 100 --production
+      python pipeline/supervise.py --production --top 100 > run.log 2>&1
+
+  SUPERVISE, NOT THE JUDGE DIRECTLY. The judge has one database connection and
+  no reconnect - measured mean time to first failure ~2 hours, against a ~40 day
+  run. supervise.py restarts it until the queue is empty and has four interlocks
+  against ever running two. Launching nim_judge.py by hand gets you no restart.
+
+  Then watch it:   python pipeline/monitor.py --production      (127.0.0.1:8000)
 
   --queue with no --client = the GLOBAL spend order, largest supplier anywhere
   first. --top 100 is the stop-and-look slice: 100 of 29,469 vendors carry

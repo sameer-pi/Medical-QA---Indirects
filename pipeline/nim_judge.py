@@ -247,8 +247,34 @@ def responded(per_model):
     🔑 The data was always in NIM_1/2/3_VERDICT; what was missing was anything that SURFACED
     it. This is that column - jury health as a value on the row an analyst can filter, not a fact
     someone has to go looking for.
+
+    🔴 FIXED 2026-08-26, AND IT HAD BEEN WRONG SINCE THE DAY IT WAS WRITTEN. This counted
+    `v.get("verdict")` - ANY non-empty string - so a model that answered with a word that is not a
+    verdict was counted as having voted. `google/gemma-4-31b-it` does exactly that: it returns
+    'Uncategorised' and 'categorised', neither of which is in VERDICTS. Measured on the pilot:
+    86 of 1,801 judged lines (4.78%) were stamped NIM_MODELS_RESPONDED = 3 while holding TWO valid
+    votes. At production scale that is ~133,000 lines.
+
+    ✅ NO VERDICT WAS EVER AFFECTED. `vote()` has always filtered on `in judge.VERDICTS`, so a
+    non-verdict is discarded before the tally and no consensus rests on one. What was wrong was the
+    RECORD of how many models answered - the column that exists precisely so a hollow jury cannot
+    hide.
+
+    🔑 THIS IS FINDING 124/125 ONE LAYER DEEPER: THE COUNT IS NOT THE COVERAGE. F124 proved a model
+    can return the right NUMBER of verdicts and still leave lines with two votes, and built a check
+    comparing the ID set sent against the ID set returned. That check never asked whether what came
+    back WAS a verdict. Same failure, one level in.
+
+    ⚠️ THE FIX IS FORWARD-ONLY. Rows already written keep their inflated value - the pilot's 86 stay
+    at 3 unless re-judged. Production has judged nothing, so production is correct from its first
+    line, which is the whole reason this was fixed BEFORE the run rather than after.
+
+    ⚠️ AND IT INTERACTS WITH write()'s TOP-UP GUARD, correctly. That guard refuses to lower
+    NIM_MODELS_RESPONDED. An old row storing 3 will now be recomputed as 2, and `3 <= 2` is false,
+    so the guard declines to overwrite it. A top-up cannot use this fix to repair old rows; only a
+    re-judge can.
     """
-    return sum(1 for v in per_model if v and v.get("verdict"))
+    return sum(1 for v in per_model if v and v.get("verdict") in judge.VERDICTS)
 
 
 def write(qa, qcur, run_id, results, keyed, used):
@@ -531,6 +557,79 @@ def judge_client(qa, qcur, run_id, client, env, limit, uncategorised, batch=None
     return state["written"] if state["written"] else -1
 
 
+def vendors_with_work(qcur, run_id, topup, client=None):
+    """Which vendors still have something to judge - ONE query, asked of qa_line itself.
+
+    WHY THIS EXISTS. On a resume the judge re-discovered what was already done by probing every
+    vendor individually: two emit_batch calls each, both returning nothing. Measured on production
+    2026-08-26 - 29,469 vendors, 0.18s per probe - THAT IS 2.70 HOURS OF DOING NOTHING before a
+    single new line is judged, paid again on every restart. The supervisor makes restarts routine,
+    so it is paid often. This asks the same question of the whole population in ONE GROUP BY:
+    measured 0.41s for all 29,469. Two and a half hours against four tenths of a second.
+
+    🔒 DERIVED, NEVER STORED. It would have been easy to have the judge maintain
+    qa_vendor_queue.QUEUE_STATUS instead. That column is a photograph taken when the queue was
+    BUILT and nothing updates it - and a stored flag would still be wrong after any crash mid-
+    vendor, would need 29,469 extra writes, and would be a second definition of "done" free to
+    disagree with the lines. The lines are the authority. Sameer, 2026-08-26, on being shown both:
+    "yeah for it, if it saves time if the judge happens to crash".
+
+    ⚠️ IT MUST MATCH emit_batch'S ARMS EXACTLY, and there are TWO that can find work here, not one:
+        arm 1  NIM_VERDICT IS NULL                     - never judged
+        arm 4  NIM_MODELS_RESPONDED < 3, --topup only  - JUDGED, but by a hollowed-out jury
+    A skip built on arm 1 alone would walk past every thin-jury line on a --topup run and report
+    success. That is the failure mode this project keeps paying for: a queue that comes back short
+    and reads as "nothing to fix there". So --topup widens the test rather than narrowing it.
+
+    🔒 FAILS CLOSED. Any error returns None, which the callers read as "skip nothing, walk them
+    all". A wrong skip means lines are never judged and NOTHING LOOKS BROKEN; a wrong walk costs
+    time and is visible. Those are not symmetrical, so the cheap failure is the one to choose.
+
+    ⚠️ AND IT RETURNS TWO SETS, NOT ONE. The skip matches a name from qa_vendor_queue against a
+    name from qa_line in PYTHON, and Python's == is not SQL's - the trailing-space lesson that let
+    524,923 clinical lines through a pandas gate. If a queue name failed to match for any reason,
+    the vendor would be absent from `live` and read as FINISHED. So `known` records every vendor
+    the scan actually saw: a queue row missing from it is a NAME THAT DID NOT MATCH, which is a
+    reason to judge it and say so, never a reason to skip it.
+    """
+    extra = ("\n                 + SUM(CASE WHEN NIM_MODELS_RESPONDED < 3 THEN 1 ELSE 0 END)"
+             if topup else "")
+    args = [run_id] + ([client] if client else [])
+    try:
+        t = time.time()
+        qcur.execute("""
+            SELECT CLIENT_CODE, SUPPLIER_NAME,
+                   SUM(CASE WHEN NIM_VERDICT IS NULL THEN 1 ELSE 0 END)""" + extra + """
+            FROM qa_line
+            WHERE RUN_ID = ?""" + ("\n              AND CLIENT_CODE = ?" if client else "") + """
+            GROUP BY CLIENT_CODE, SUPPLIER_NAME""", *args)
+        rows = qcur.fetchall()
+        known = {(r[0], r[1]) for r in rows}
+        live = {(r[0], r[1]) for r in rows if (r[2] or 0) > 0}
+        print(f"  resume check: {len(live):,} of {len(known):,} vendors still have work "
+              f"({time.time() - t:.2f}s){' - including thin juries (--topup)' if topup else ''}",
+              flush=True)
+        return live, known
+    except Exception as e:                                          # noqa: BLE001 - deliberate
+        print(f"  WARNING: resume check failed ({e}) - walking EVERY vendor. Slower, never wrong.",
+              flush=True)
+        return None
+
+
+def _still_open(sets, client, name):
+    """True if this queue row still has work. UNKNOWN ALWAYS MEANS TRUE - see fails-closed above."""
+    if sets is None:
+        return True
+    live, known = sets
+    if (client, name) not in known:
+        # The queue holds a vendor the scan never saw. Judge it and say so - a silent skip here
+        # is work that vanishes, and nothing downstream would look broken.
+        print(f"  WARNING: {client} / {name!r} is in the queue but not in the resume scan "
+              f"- judging it rather than assuming it is done", flush=True)
+        return True
+    return (client, name) in live
+
+
 def judge_queue(qa, qcur, run_id, client, env, batch, workers, topup=False, top=None):
     """Judge one client VENDOR BY VENDOR, in the spend queue's rank order. Stage 3, 2026-08-25.
 
@@ -567,6 +666,18 @@ def judge_queue(qa, qcur, run_id, client, env, batch, workers, topup=False, top=
         vendors = vendors[:top]
     print(f"\n  {client}: {len(vendors):,} vendors in the queue"
           f"{f' (top {top} only - the STOP AND LOOK slice)' if top else ''}", flush=True)
+
+    # 🔒 THE SKIP IS APPLIED **AFTER** `top`, AND THAT ORDER IS THE WHOLE POINT. --top 100 names a
+    # FIXED SET - the hundred biggest vendors, the STOP AND LOOK slice. Filter first and a resume
+    # would top the list back up to 100 with vendors 101, 102, 103... so the same command would
+    # judge a different population on the second run than the first, silently. Filtering after
+    # leaves the slice exactly the hundred it always was and merely declines to re-walk the done.
+    live = vendors_with_work(qcur, run_id, topup, client=client)
+    before = len(vendors)
+    vendors = [v for v in vendors if _still_open(live, client, v[1])]
+    if before != len(vendors):
+        print(f"  skipping {before - len(vendors):,} already finished - {len(vendors):,} to go",
+              flush=True)
 
     t0 = time.time()
     done_v = judged = skipped = 0
@@ -630,6 +741,18 @@ def judge_global(qa, qcur, run_id, env, batch, workers, topup=False, top=None):
             f"  Build it first:  python pipeline/vendor_queue.py [--production]\n")
     if top:
         vendors = vendors[:top]
+
+    # AFTER `top`, for the reason given in judge_queue: the slice is a fixed set of vendors, and a
+    # resume must not quietly refill it with the next ones down the list.
+    live = vendors_with_work(qcur, run_id, topup)
+    before = len(vendors)
+    vendors = [v for v in vendors if _still_open(live, v[1], v[2])]
+    if before != len(vendors):
+        print(f"  skipping {before - len(vendors):,} already finished - {len(vendors):,} to go",
+              flush=True)
+    if not vendors:
+        print("  NOTHING LEFT TO JUDGE - every vendor in this slice is complete.", flush=True)
+        return 0
 
     spread = {}
     for v in vendors:

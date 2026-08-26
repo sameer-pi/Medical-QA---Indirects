@@ -1,10 +1,48 @@
 # ACTIONS — what Sameer needs to do
 
-**As at 25 August 2026.** Everything not listed here is on me.
+**As at 26 August 2026.** Everything not listed here is on me.
 
 ---
 
 ## 🔵 WHERE THIS SITS — one decision is the real gate, the rest is mine
+
+### 0. 🟠 ONE VALUE LEFT — the app password for the stall email
+
+**Everything else is done.** I put the block in `.env` on 2026-08-26; five of the six keys are
+filled. Only this one needs you:
+
+```
+MONITOR_SMTP_PASS=          <- blank. Needs an APP PASSWORD
+```
+
+**Why I could not fill it.** Microsoft turned OFF basic SMTP authentication by default in 2022, so
+your normal mailbox password will not work. One of these has to happen:
+
+1. you generate an **app password** (needs MFA on the account); or
+2. **IT enables `SMTP AUTH` on the `sameer@p-i.com.au` mailbox** — it is a per-mailbox setting.
+
+Paste it **without the spaces** Microsoft displays it with.
+
+**The host was verified, not guessed.** `p-i.com.au` resolves MX to
+`pi-com-au0c.mail.protection.outlook.com` and its SPF includes `spf.protection.outlook.com`, so the
+domain is Microsoft 365 and `smtp.office365.com:587` is correct. Had it been Google Workspace, a
+guess would have failed silently at 2am on the night it mattered.
+
+🔒 **NOTHING IS BLOCKED BY THIS.** The judge never reads these keys. The monitor runs, and the page
+still turns red when the judge stops. Only the email is silent — and the monitor now says so out
+loud rather than claiming to be armed:
+
+```
+email       ** NOT ARMED ** MONITOR_SMTP_PASS is blank - needs an app password.
+                            The page still reddens; no email will be sent
+```
+
+**When you have it:** paste it, restart the monitor, and tell me. I will fire a deliberate test
+alert. Do not let a real stall be the first time we find out whether it delivers.
+
+⚠️ **Do this on the DESKTOP's `.env`.** You are sending the file over Teams, so either add the
+password before you send it, or add it on the desktop afterwards — but not both machines and then
+wonder which is live.
 
 ### 1. ☑ ~~How hard do you want me to push concurrency?~~ — ANSWERED BY MEASUREMENT, 2026-08-18
 

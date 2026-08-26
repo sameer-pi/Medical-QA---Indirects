@@ -26,6 +26,22 @@
 # losing a ruling because it sat on the other machine is a real and expensive failure.
 # =====================================================================================
 
+# Run-machine state under output/logs/ — a NARROW exception to the rule above, and narrow on
+# purpose. Everything else under output/ stays tracked because it is irreplaceable; these two are
+# neither irreplaceable nor safe to move between machines.
+#
+#   supervise.lock   The PID of the supervisor ON THIS MACHINE. It is actively HARMFUL if it
+#                    travels: a lock naming a PID that means something else on the desktop is
+#                    exactly how the "is another supervisor running?" check gets a wrong answer.
+#   judge-*.log      Verbatim judge output, one file per restart attempt. A single full production
+#                    run writes ~278,600 batch lines; these reach tens of MB and are regenerable.
+#
+# ⚠️ supervise-*.log is DELIBERATELY NOT IGNORED. It is small, and it is the RESTART RECORD — the
+# only measurement of how often the judge actually trips (RUN_LOG Finding 133 rests on n=1). Losing
+# it would put us back to guessing.
+output/logs/supervise.lock
+output/logs/judge-*.log
+
 # Python
 __pycache__/
 *.py[cod]

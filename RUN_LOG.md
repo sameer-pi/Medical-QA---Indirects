@@ -13000,3 +13000,1278 @@ CHECKS      test_coverage 22/0 · test_guards 20/0 · test_classify 15/0 · pari
    **definitions** · `merge_taxonomy` still reads the PILOT by default.
 6. ⚠️ **Optional, offered and not answered:** a hard stop that refuses `--production` unless a
    backup is confirmed. Less pressing now that backups are known to run nightly.
+
+
+---
+
+## Finding 127 — 2026-08-26 — **A live run monitor is possible and cheap: ~~the whole panel is ~0.5 s against 2,786,018 production rows~~. Discussed only, nothing built**
+
+> 🔴 **THE FIGURE IN THIS TITLE IS WRONG AND IS STRUCK, NOT DELETED — see Finding 129.** ~0.5 s was
+> measured on a WARM buffer pool and quoted as the cost. The real range is **22-145 ms warm and up to
+> 47.6 s cold**, on a 4,214 MB table, with the nightly 00:15 backup evicting the cache every night. The
+> conclusion of this finding — that a live monitor is feasible — **still holds**; the number it rested
+> on did not. The reasoning is kept because the way it was wrong is the point.
+
+**What Sameer asked for.** With the judging run about to sit on the office desktop for ~40 days, a
+local status page: progress, completion rate and error rate at hospital level, key insights for the
+team and the manager, and *"after every 500 lines ... auto refreshed ... like a live viewing of the
+progress."*
+
+**What was run.** A **read-only probe** from the scratchpad against `PI_Medical_QA_Indirect`
+(production, 2,786,018 rows, judged 0), `WITH (NOLOCK)`, best of three. Nothing was written and the
+probe was not kept.
+
+```
+A. per-client progress + verdict mix + jury health + last-judged-at   cold 152 ms   best 130 ms
+B. judged-only count per client                                       cold  80 ms   best  79 ms
+C. throughput, lines/min over the last 60 min                         cold 129 ms   best  76 ms
+D. vendor queue progress (29,469 rows, indexed)                       cold  61 ms   best  26 ms
+E. signed spend covered, per client                                   cold 135 ms   best 127 ms
+                                                        WHOLE PANEL  ~0.5 s
+qa_line indexes: pk_qa_line (clustered), ix_qa_line_rule, ix_qa_line_unit
+```
+
+🔑 **No index on `NIM_VERDICT` or `NIM_JUDGED_AT`, and none is needed** — the aggregate is a scan
+that costs 130 ms anyway. Half a second against a job producing ~50 lines/min means the refresh
+cadence can be chosen on what is useful to look at, not on what the server can bear.
+
+⚠️ **THE CAVEAT, STATED NOW RATHER THAN DISCOVERED LATER.** Every figure above was measured with the
+**entire NIM layer NULL**. `NIM_RATIONALE` is `nvarchar(2000)` across ~30 NIM columns; once they fill
+the table grows and the scan slows. **Re-measure at ~100,000 judged lines and record it in `APP.md`.**
+Even a 5x regression is 0.65 s and changes nothing — but a moved number gets re-measured, not recalled.
+
+**🔑 "Auto-refresh the view" rests on a misconception, and saying so was the useful part.**
+`qa_line_view` is a **plain view, not a materialised one.** It holds no data, it is a stored `SELECT`
+executed fresh on every read, so **it cannot be stale and there is nothing to refresh.** The instant
+the judge commits a batch the next read already contains it. Only one thing refreshes: the app's own
+numbers.
+
+**🔑 What "every 500 lines" actually costs.** `nim_judge.py` commits one batch at a time under a
+single lock (`nim_judge.py:496`), default `--batch 10`, so the database moves in ~10-line steps —
+about one commit every 12 seconds at ~50 lines/min. Therefore:
+
+```
+500 lines  /  ~50 lines/min  =  ONE REDRAW EVERY ~10 MINUTES
+```
+
+That is slower than "live viewing" sounds, and it is Sameer's call with the number in front of him.
+**Recommended instead: poll the cheap count every 15 s and redraw only when it has moved.** 🔒 **The
+reason is not elegance — it needs ZERO changes to `nim_judge.py`.** Every other trigger (a heartbeat
+row, the judge calling the app, a database trigger) puts new code inside the thing that is about to
+run unattended for 40 days. The app watches; the judge never learns it exists.
+
+**🔒 NOT A REVERSAL OF THE "NO APP" RULING, and this is stated in three places so it cannot drift.**
+Stages 7-app and 4b stay DEAD. What Sameer killed was an app the analyst works in, that writes to the
+database, and that is a client deliverable. This is none of those: read-only, internal, no analyst, no
+write path, thrown away when the run ends.
+
+**🔑 `pipeline/dashboard.py` already is this dashboard minus the liveness** — built 2026-08-18 to
+Sameer's own brief off the MSD app screenshot, and its docstring already carries four traps (never mix
+the old Claude verdict layer with `NIM_*`; `Out of scope` is not an error; no "% with a destination",
+because `NIM_SUGGESTED_KEY` is NULL by design on `Correct`; never touch `qa_rule.ERROR_RATE`). The
+monitor reuses that card rather than re-learning those four.
+
+**🔒 THE MOST DANGEROUS NUMBER ON THE PAGE.** A mid-run error rate is **the largest vendors' error
+rate, not the hospital's** — the run order is spend-weighted, which is the exact opposite of a spread
+sample. Permanent internal banner, denominator on every tile, and **no export button**: the moment a
+screenshot leaves the building the banner is all that travels with the number.
+
+**Definitions locked in the write-up, because both are easy to get wrong:**
+`error rate = Incorrect / (Correct + Incorrect)`, **Uncertain excluded from both sides** and stated as
+its own headline; and the run-health strip that nobody asked for — **last verdict written, lines/min,
+and `NIM_MODELS_RESPONDED < 3`** — because over 40 unattended days the expensive failure is the judge
+dying at 2am on day 6 and nobody noticing until day 9, and a stalled run looks exactly like a finished one.
+
+**What changed on disk.** `APP.md` created (the whole discussion, six open decisions).
+`TRACKER.md` as-at moved to 2026-08-26, a stage **6m** row added and a gate row added — both saying
+explicitly that it does **not** gate stage 6. `CLAUDE.md`'s file table gained an `APP.md` row.
+**No code was written. Nothing in `pipeline/` changed.**
+
+### Next session starts here
+
+1. 🆕 **Six decisions on the monitor, `APP.md` §10** — cadence · audience · beside-or-replace
+   `dashboard.py` · localhost-or-LAN · a `db_datareader`-only login · log-tail or DB-only.
+   **None of them block the run.**
+2. 🔴 **The run itself still comes first, and the monitor must not delay it.** The desktop list from
+   Finding 126 is unchanged: `.env` by hand, `pyodbc` + **ODBC Driver 17**, network to the server,
+   then `vendor_queue.py --production` and `nim_judge.py --queue --top 100 --production`,
+   **launched DETACHED**. ⚠️ **ONE JUDGE AT A TIME.**
+3. **Re-measure the panel cost at ~100k judged lines** and update `APP.md` §3.
+4. Quality checks, still none of them gates: the orphaned **answer key** · the **+2,210** and
+   Baseline 3 · the remaining category **definitions** · `merge_taxonomy` still reads the PILOT
+   by default.
+
+
+---
+
+## Finding 128 — 2026-08-26 — **`qa_line_view` could say WHAT was judged and never WHEN. `NIM_JUDGED_AT` and `NIM_PROMPT_VERSION` added on Sameer's instruction — 36 → 38 columns, both databases**
+
+**How it was found.** Sameer asked a yes/no question about the monitor discussion: *"when the judge
+starts judging it will fill the respective cols in the table ... ideally the view would need to carry
+in the same informtion coreect yes or no?"*
+
+**The answer was YES, and proving it turned up something else.** Proven on the **pilot**, the only
+database with judged rows — the same aggregate run against the table and against the view returns
+identical numbers, unjudged rows included, and `sys.indexes` on `qa_line_view` = **0** in both
+databases, so it is not an indexed view: it holds no stored copy and is computed on every read. **A
+window, not a photocopy. It cannot go stale and there is nothing to refresh.**
+
+**🔴 BUT THE VIEW WAS A SUBSET, AND THE OMISSION WAS NOT RECORDED ANYWHERE.**
+
+```
+qa_line       84 cols    28 NIM columns
+qa_line_view  36 cols    12 NIM columns        16 MISSING
+```
+
+`NIM_JUDGED_AT` was one of the missing 16. **The view could say what was judged and never when** —
+over a ~40-day run, the difference between *"4,000 lines judged"* and *"4,000 lines judged, the last
+one nine hours ago, the judge is dead"*. Also missing: `NIM_PROMPT_VERSION` (two versions in one run
+is a stop signal, and the view could not show it), `NIM_BASIS`, `NIM_DECIDED_BY`, and all 12 per-model
+columns. ✅ `NIM_MODELS_RESPONDED` **was** present, so jury health was never at risk.
+
+🔑 **THEY WERE AN OMISSION, NOT A DECISION — and that is the finding.** The view's header carries an
+explicit *"WHAT IS DELIBERATELY ABSENT, so nobody re-adds it as an oversight"* list. These two were in
+**neither** list nor the SELECT. Nothing recorded that they had been left out, so nothing would ever
+have prompted anyone to reconsider. ⚠️ **Found by measuring the view's columns against the table's —
+not by reading either.** Reading the header would have shown a careful list of exclusions and given
+false comfort; the header was complete about what it excluded *on purpose*, and silent about what it
+dropped by accident.
+
+**What Sameer decided.** *"add both cols to the view, and let me know."*
+
+**How it was applied.** `pipeline/schema.sql` edited first, then the `DROP VIEW` / `CREATE VIEW` block
+lifted **verbatim** from that file and executed — the file is the truth, the server is the copy. The
+applier asserted exactly two statements and **refused to run if the block contained `DROP TABLE`,
+`ALTER TABLE`, `TRUNCATE`, `DELETE`, `UPDATE` or `INSERT`**: a view change may touch the view and
+nothing else. `assert_writable_qa_database()` checked the **live** `DB_NAME()`, not `.env`. Pilot
+first, production second.
+
+```
+PILOT       view columns 36 -> 38
+            qa_line_view = qa_line     2,000 = 2,000            delta 0
+            judged rows carrying NIM_JUDGED_AT THROUGH THE VIEW   1,413
+              first 2026-08-24 14:15:41   last 2026-08-25 16:34:51
+              same count straight from qa_line                    1,413   MATCH
+            prompt versions in flight   v7 x 1,413    <- ONE
+
+PRODUCTION  view columns 36 -> 38
+            qa_line_view = qa_line     2,786,018 = 2,786,018     delta 0
+            judged rows carrying a timestamp   0    <- correct, nothing judged yet
+
+verify_schema_parity.py   qa_line_view pilot 38 = production 38   PRODUCTION MATCHES THE PILOT
+test_guards.py            20 passed, 0 failed
+test_classify.py          15 cases, 0 failures
+```
+
+🔑 **THE ROW-COUNT CHECK IS THE ONE THAT MATTERED.** A view is a `SELECT`, and a careless edit can
+filter rows or fan them out through the `qa_rule` join with nothing looking broken — the exact failure
+the view's own header warns about, and the reason that join was measured before the view was written.
+**Delta zero on both databases, before and after.**
+
+✅ **Nothing in `pipeline/` reads `qa_line_view`** — `grep` returns no Python outside `schema.sql`.
+So no code could break on the column positions shifting. The view is for humans and ad-hoc analysis,
+which is what it was built for.
+
+⚠️ **Timing was deliberate.** Re-creating a view is `DROP` then `CREATE`, and for that instant the
+view does not exist. Done while **production has judged 0 rows and nothing is running against it**.
+Mid-run, the same change would error for anything reading the view at that moment. **If the view is
+changed again, do it between runs.**
+
+⚠️ **`NIM_JUDGED_AT` IS NOT A TRANSACTION DATE.** It is when the judge wrote the row, never when the
+hospital bought anything. The line's own date stays out of the view deliberately — `INVOICE_DATE` is
+free text and 52% empty at Sydney Adventist. Two clocks; one of them is in the view, and the header
+now says so.
+
+⚠️ **ONE THING NOT TESTED, stated rather than assumed.** `apply_schema.py` (without `--drop`) runs the
+whole of `schema.sql`, and its error handler swallows only *"already exists"* and *"duplicate key
+name"*. SQL Server's message for an existing table is *"There is already an object named 'X' in the
+database"*, which may match neither. **Whether `apply_schema.py` can be run against an already-
+populated database is unknown** — which is why the view block was applied on its own rather than
+finding out on production with 2,786,018 rows in it. A one-line test on the pilot settles it. Not
+urgent, not a blocker.
+
+**🔒 AND THE MONITOR STILL READS `qa_line`, NOT THE VIEW.** Both were done, and kept apart on purpose:
+the view was fixed **on its own merits**, because *the one place anyone looks* could not say when
+anything happened. Widening it *because a watcher wanted it* is how a read-only watcher starts
+changing what it watches. **The monitor itself is still not built** — six decisions remain open in
+`APP.md` §10.
+
+**What changed on disk.** `pipeline/schema.sql` — the view definition, plus the reasoning beside the
+two columns and a note in the header that they were an omission rather than an exclusion. `APP.md`
+v0.3 with §4.1–4.3 and decision 7 closed; its status header and §11 corrected, because both still
+claimed nothing had been built. `TRACKER.md` — as-at, both measured blocks 36 → 38, the gate row.
+
+### Next session starts here
+
+1. 🔴 **The run comes first and nothing above delays it.** Desktop list unchanged from Finding 126:
+   `.env` by hand, `pyodbc` + **ODBC Driver 17**, network to the server, then
+   `vendor_queue.py --production` and `nim_judge.py --queue --top 100 --production`, **launched
+   DETACHED**. ⚠️ **ONE JUDGE AT A TIME.**
+2. **Six decisions on the monitor, `APP.md` §10** — cadence · audience · beside-or-replace
+   `dashboard.py` · localhost-or-LAN · a `db_datareader`-only login · log-tail or DB-only.
+   **None of them block the run.**
+3. **Re-measure the panel cost at ~100k judged lines** and update `APP.md` §3. Today's 130 ms was
+   measured with the NIM layer entirely NULL.
+4. **One-line test:** does `apply_schema.py` without `--drop` survive an already-populated database?
+   Run it on the pilot, not production.
+5. Quality checks, still none of them gates: the orphaned **answer key** · the **+2,210** and
+   Baseline 3 · the remaining category **definitions** · `merge_taxonomy` still reads the PILOT
+   by default.
+
+
+---
+
+## Finding 129 — 2026-08-26 — **The run monitor is BUILT. And building it proved my own cost figure wrong: not ~0.5 s but 22 ms warm and 47.6 s cold**
+
+**What Sameer decided.** Audience: him and his manager, both with access to the office desktop — so
+**localhost, no LAN, no password**. Alerting: **red page AND an email**. Timing: **build it before
+judging starts**, even though it will have nothing to watch. Everything else: my recommendations.
+
+**What was built.** `pipeline/monitor.py` — one page on `http://127.0.0.1:8000`, stdlib
+`http.server` + `pyodbc`, **no new dependency on a machine that must survive 40 unattended days**.
+Plus `pipeline/test_monitor.py`, **37 checks, 0 failed, no database needed**.
+
+**🔴 THE FINDING IS A CORRECTION TO MY OWN NUMBER.** On the strength of a read-only probe I told
+Sameer the whole panel cost **~0.5 s** against production. The first real run of the built monitor
+took **47.6 seconds**. Then 18.2 s. Then 6.1 s. Then 1.9 s. Then, cache hot, everything settled:
+
+```
+qa_line on production is 4,214 MB on disk. Every read here is a FULL SCAN of it.
+
+  WARM                                    COLD / server busy  (same queries, same session)
+    count all lines            25 ms        whole panel   47.6 s   <- first run, fresh process
+    heartbeat, judged only    106 ms        whole panel   18.2 s
+    per-client mix            145 ms        whole panel    6.1 s
+    action mix                 87 ms        whole panel    1.9 s
+    top vendors                86 ms
+    top rules (JOIN qa_rule)  103 ms
+    prompt versions           132 ms
+    vendor queue               22 ms
+    lines total from qa_run     9 ms   <- no scan at all
+    WHOLE PANEL              ~1.0 s
+```
+
+🔑 **THE AVERAGE IS NOT THE FINDING; THE SPREAD IS.** Warm, it is a tenth of a second. Cold, it is
+however long it takes to pull 4.2 GB off a shared disk. **Both numbers are real and I quoted only one
+of them** — the project's own standing rule, *never quote a figure without its provenance*, broken by
+me **in the very document that restates it**. The probe was not wrong; presenting its output as *the*
+cost, without the condition that produced it, was.
+
+⚠️ **AND THE COLD CASE IS NOT HYPOTHETICAL.** The nightly FULL backup at 00:15 reads the whole
+database and evicts the buffer pool. **The first refresh after roughly 00:30 will be slow, every
+night, for 40 nights.**
+
+**What changed in the design because of it** — it now survives a slow read instead of assuming a fast
+one: reads on a **background thread** so the page never blocks · **one refresh at a time**, so a 40 s
+read means fewer refreshes and never a pile-up · **the page prints how long the last refresh actually
+took and the worst so far**, which turns this from a claim into a standing measurement · **STALE +
+last-good-read** when the database is unreachable, never an old number that looks current ·
+connection timeout **60 s → 180 s**, because 60 had no headroom over a measured 47.6.
+
+🔒 **NO INDEX WAS ADDED, AND THAT WAS THE POINT.** A filtered index on the judged rows would fix the
+cold case outright. It is also a schema change to a 4.2 GB production table about to take 40 days of
+writes, **made to serve a watcher** — the exact line this thing is not supposed to cross. It is
+`APP.md` decision **8**, to be taken with a measurement after the run has been going a few days, if
+the cold case actually hurts.
+
+**🔑 THE STRIP NOBODY ASKED FOR IS THE ONE THAT EARNS THE PAGE.** Over 40 unattended days the
+expensive failure is not a wrong number — it is **the judge dying at 2am on day 6 and nobody noticing
+until day 9**, and *a stalled run and a finished one both stop moving*. So: **last verdict written**,
+**lines/min over 15 and 60 min**, and **jury health (`NIM_MODELS_RESPONDED < 3`) — Finding 124/125
+made visible on day 1 instead of day 39** — shown as a rate, and shown whether good or bad, because a
+check that only speaks when unhappy is a check nobody knows is running. Plus **prompt version** and
+**run_id**, each of which turns red on a second value: two prompt versions in one run are not
+comparable, and two run_ids mean every figure on the page is double-counting.
+
+**Definitions pinned in the tests rather than left to drift:**
+`error rate = Incorrect ÷ (Correct + Incorrect)`, **Uncertain excluded from BOTH sides** and reported
+as its own headline · **`Out of scope` is not an error** and `needs an analyst` is `Miscategorised`
+alone · tables rank by **line count, never by spend** · **signed spend keeps its minus sign**
+(`-$5,625,000,000` asserted verbatim) · the banner's wording cannot be silently dropped.
+
+**🔒 THE READ-ONLY GUARD, AND WHY IT IS TESTED AND NOT ASSERTED.** `_ro()` refuses any statement that
+is not a plain SELECT. Verifying that by hand once, in a scratchpad script, is how a guarantee stops
+being true on the next edit — so it is now `test_monitor.py`. It proves refusal of a bare
+`UPDATE`/`DELETE`/`DROP`/`TRUNCATE`/`ALTER`/`CREATE`/`EXEC`/`BACKUP`/`GRANT`, **and of the three that
+BEGIN with `SELECT` and still write** — `SELECT ... INTO`, a stacked `DROP`, a lower-case stacked
+`DELETE` — which a first-word check would wave straight through. 🔑 **It then re-reads `monitor.py`'s
+own source, extracts all 11 of its real queries and asserts each passes that same guard** — because a
+blocklist that also blocks the legitimate SQL is a blocklist that gets loosened by whoever hits it
+next, and then it guards nothing.
+
+⚠️ **THE GUARANTEE IS STILL CODE, NOT PERMISSION.** `[Claude]` holds `db_datawriter`. A
+`db_datareader`-only login is `APP.md` decision 5 and needs `db_owner`, which we deliberately lack.
+
+**Proven end to end, not just unit-tested.** The server was started for real, `GET /` returned a
+7,903-byte page with a `<title>`, `GET /api/status` returned valid JSON carrying the banner and the
+rendered body, an unknown path returned **404**, and the pilot's genuine state came back through it:
+**1,413 of 2,000 judged (70.65%)**, stalled **True** (its last verdict was 19.5 hours earlier, which
+is correct — that run was killed on 08-25), stamp reading *"refreshed 12:08:40 in 34 ms (heartbeat
+only) · slowest so far 200 ms · email stall alert not configured"*. Melbourne rendered **C 120 ·
+I 221 · U 159 → error 64.8%, uncertain 31.8%**; top vendor `WINC AUSTRALIA PTY LIMITED` (48 incorrect
+lines), top rule `MEL-0491` in `[dbo].[PMML_Rules_Ordered]` — **the rules table named beside the ID,
+because a rule ID names independent copies.**
+
+**⚠️ WHAT IS NOT DONE, plainly.**
+
+1. 🟠 **The email has no settings.** `MONITOR_SMTP_*` / `MONITOR_ALERT_*` are absent from `.env`; the
+   stall path ran and reported *"not configured"* rather than failing. **The page still reddens;
+   nothing is sent.** ⚠️ `p-i.com.au` looks like Microsoft 365, which **disabled basic SMTP auth by
+   default in 2022** — an app password, or IT enabling `SMTP AUTH` on the mailbox, is likely needed.
+   Now `ACTIONS.md` § 0. **Untested, because I have no mailbox to test with.**
+2. 🔴 **It has never watched a MOVING judge.** Production has judged 0 lines, so every number it shows
+   there is a zero. It was proven against the pilot's 1,413 rows, which are static. **The first real
+   test is the first hour of the run.**
+3. ⬜ Decision 8, the index.
+
+**What changed on disk.** `pipeline/monitor.py` NEW · `pipeline/test_monitor.py` NEW · `APP.md` v0.4
+(status flipped to BUILT, §3 cost struck and corrected in §3.1, decision 8 added, §11 rewritten
+because it still claimed nothing existed) · `TRACKER.md` as-at, stage 6m, gate row · `ACTIONS.md` § 0.
+**`nim_judge.py` was not touched, which was the design goal.**
+
+### Next session starts here
+
+1. 🔴 **START THE RUN. Nothing above is a reason to delay it.** `.env` by hand, `pyodbc` + **ODBC
+   Driver 17**, network to the server, then `vendor_queue.py --production` and
+   `nim_judge.py --queue --top 100 --production`, **launched DETACHED**. ⚠️ **ONE JUDGE AT A TIME.**
+2. **Then start the monitor beside it:** `python pipeline/monitor.py --production`, open
+   `http://127.0.0.1:8000`. **Watch the first hour** — that is the first time it sees a moving judge,
+   and the first chance to find out whether lines/min, the ETA and the stall clock read sensibly.
+3. 🟠 **Six lines in `.env` for the email**, then ask me to fire a deliberate test alert. Do not wait
+   for a real stall to discover it does not send.
+4. **Re-measure the panel cost at ~100k judged** — the page prints it, so this is a glance. If the
+   cold case is hurting, decision 8 (the index) with the number in hand.
+5. Quality checks, still none of them gates: the orphaned **answer key** · the **+2,210** and
+   Baseline 3 · the remaining category **definitions** · `merge_taxonomy` still reads the PILOT by
+   default · does `apply_schema.py` without `--drop` survive a populated database (F128)?
+
+
+---
+
+## Finding 130 — 2026-08-26 — **Pointed at a MOVING judge, the monitor found two of its own defects in the first four minutes. One of them read "0 lines/min" on a healthy run**
+
+**What was run.** Sameer: *"yes run both, and if it works as intended we can actually plug it into
+our actual table rather than the pilot."* So: `nim_judge.py --queue` on the **pilot** (the global
+vendor order, the same command production will use) against its **587 unjudged lines**, with
+`monitor.py --poll 10 --stall 3` watching beside it. ~12 minutes of judging to test a 40-day tool.
+
+🔑 **THIS IS THE TEST THAT COULD NOT BE FAKED, AND IT PAID FOR ITSELF IMMEDIATELY.** Every check
+before this ran against a STATIC table — 1,413 rows that were never going to change. Both defects
+below are invisible unless something is actually moving, and both were in the numbers a person would
+use to decide whether to go and restart the judge.
+
+### 🔴 DEFECT 1 — the rate read `0 lines/min` while the judge was visibly working
+
+Four minutes in, with the judged count climbing 1,413 → 1,435 in front of me:
+
+```
+13:18:35  judged 1,413  stall True   last verdict 20.7 hours ago   l/m 15: 0    l/m 60: 0
+13:18:55  judged 1,414  stall False  last verdict 16 sec ago       l/m 15: 0    l/m 60: 0
+13:19:55  judged 1,421  stall False  last verdict 24 sec ago       l/m 15: 1    l/m 60: 0
+13:22:35  judged 1,435  stall False  last verdict 25 sec ago       l/m 15: 1    l/m 60: 0
+```
+
+**22 lines in 4 minutes is 5.5/min. The page said 1, and 0.** Two faults compounding:
+
+1. **It divided by the NOMINAL window, not the span the data covers.** 22 ÷ 15 = 1.5 four minutes
+   into a run, because 11 of those 15 minutes had not happened yet.
+2. **Integer rounding turned a real rate into a displayed zero.** 22 ÷ 60 = 0.37 → `0`.
+
+⚠️ **`0 lines/min` on a healthy run is the worst thing this page could say.** It is precisely the
+number someone glances at to decide whether the judge has died — and on the real run it would have
+read `0` for the whole of the first hour, which is exactly when a person is watching hardest.
+
+**Fixed.** The denominator is now the time from the **earliest verdict inside the window** to now, so
+a window that is not yet full is not treated as if it were; and the value carries one decimal below
+10, so a real rate can never round away to nothing. After the fix, against the same live judge:
+
+```
+13:25:59  judged 1,453   l/m 5.5     ETA 0.1 days at 5.5 lines/min over the last hour
+13:26:43  judged 1,493   l/m 9.9
+13:27:27  judged 1,503   l/m 10
+13:28:33  judged 1,527   l/m 12
+```
+
+The ETA also now **falls back to the 15-minute window** when the 60-minute one is still empty —
+otherwise a 40-day job would show "no rate yet" for its entire first hour.
+
+### 🟠 DEFECT 2 — "running 2.0 days" while the judge had been working for four minutes
+
+The elapsed figure came from `MIN(NIM_JUDGED_AT)`, which is the age of the **oldest verdict in the
+table** — not how long the run has been going. The pilot carried verdicts from the 24th across a
+20-hour gap, so it read *"running 2.0 days"*. Production will be one continuous run and the two will
+agree, **which is exactly the problem: a label that is only true when nothing has gone wrong is a
+label that lies at the moment someone needs it.** Relabelled to *"first verdict N days ago"*, which
+is true either way.
+
+### ✅ WHAT WORKED, unchanged
+
+```
+progress            1,413 -> 1,545 of 2,000 (77.25%), redrawing as it climbed
+stall True -> False the moment the first verdict landed (20.7 hours ago -> 16 sec ago)
+refresh cadence     alternated "full" when the count moved and "heartbeat" when it did not,
+                    which is the whole design - 11 ms to 154 ms per refresh throughout
+jury health         14 -> 15 (0.97%). It CAUGHT A NEW THIN LINE during the run
+prompt version      v7, one value.  run_id  one value.  Neither went red
+judging now         "Sydney Adventist Hospital — BIDFOOD SYDNEY (KITCHEN ORDERS...)"
+                    the QUEUE_STATUS='in_progress' read works
+```
+
+🔑 **AND THE SEPARATION WAS PROVEN, NOT ASSERTED.** The monitor was **killed and restarted mid-run**
+to load the fix. The judge did not notice — same PID, still writing, nothing lost. That is the whole
+reason this polls instead of being told: *the watcher must be disposable and the judge must not be.*
+
+### ⚠️ STILL NOT PROVEN
+
+**SMTP delivery.** Both alert transitions **did execute** — the monitor started stalled (20.7 hours),
+fired the stall path, and reported `email stall alert not configured`; then flipped to healthy and
+fired the recovery path. So the code runs and the state machine is right. **What has never happened
+is an email actually arriving**, because `MONITOR_SMTP_*` is absent from `.env`. `ACTIONS.md` § 0.
+
+⚠️ A **preview** of the alert was emailed to `sameer@p-i.com.au` at his request, generated by running
+`send_alert()` against a stubbed mail server so the wording is genuinely the code's. It was labelled
+PREVIEW with the figures marked illustrative — an email reading *"JUDGE MAY BE DOWN"* with plausible
+numbers is exactly the thing that gets forwarded and believed. **It went out through a different
+channel and proves nothing about the monitor's own sending path.**
+
+**And the cold-scan cost is still unmeasured against a moving judge.** The pilot is 2,000 rows; the
+47.6 s cold read (F129) is a production-scale problem and will only show up there.
+
+### The regression tests
+
+`test_monitor.py` grew a section for defect 1 — 7 cases pinning that 22 lines four minutes into a run
+is **5.5/min and not 1**, that the same holds on the 60-minute window, that a full window still
+divides by 15, that the window caps the span, that a genuinely idle window is 0, and that a slow-but-
+real 0.3/min never displays as `0`. **44 checks, 0 failed.** A number that was wrong in a way nobody
+would notice is exactly the kind that needs a test rather than a memory.
+
+**What changed on disk.** `pipeline/monitor.py` — `rate()` + `fmt_rate()` added, the two tiles, the
+ETA fallback, the elapsed label. `pipeline/test_monitor.py` — the new section. `RUN_LOG.md`,
+`TRACKER.md`, `APP.md`. **`nim_judge.py` untouched.**
+
+### Next session starts here
+
+1. 🔴 **START THE PRODUCTION RUN — that is the gate, and none of the above delays it.** `.env` by
+   hand, `pyodbc` + **ODBC Driver 17**, network to the server, then `vendor_queue.py --production`
+   and `nim_judge.py --queue --top 100 --production`, **launched DETACHED**. ⚠️ **ONE JUDGE AT A
+   TIME.**
+2. **Then `python pipeline/monitor.py --production`** — one flag, same code, nothing else changes.
+   Until judging starts it will honestly show zeros everywhere.
+3. **Watch the first hour on production.** Two things can only be learned there: whether the cold
+   47.6 s scan bites, and whether the ETA is sane at 2.79M lines rather than 2,000.
+4. 🟠 **Six lines in `.env` for the email**, then ask me to fire a deliberate test. Do not let a real
+   stall be the first time it is tried.
+5. Quality checks, still none of them gates: the orphaned **answer key** · the **+2,210** and
+   Baseline 3 · the remaining category **definitions** · `merge_taxonomy` still reads the PILOT by
+   default · does `apply_schema.py` without `--drop` survive a populated database (F128)?
+
+
+---
+
+## Finding 131 — 2026-08-26 — **🔴 A MODEL IS RETURNING WORDS THAT ARE NOT VERDICTS, AND `NIM_MODELS_RESPONDED` COUNTS THEM AS VOTES. 4.78% of the pilot claims a full jury on two valid votes**
+
+**How it was found.** Sameer asked for one or two more dashboard visuals and suggested *"which model
+seems to be more accurate"*. Answering that honestly meant measuring what the per-model columns
+actually hold — and they hold a defect.
+
+### 🔴 THE DEFECT
+
+`google/gemma-4-31b-it` returns **`'Uncategorised'` (81) and `'categorised'` (5)** in
+`NIM_3_VERDICT`. The valid vocabulary is `judge.VERDICTS = ('Correct', 'Incorrect', 'Uncertain')`.
+**Seats 1 and 2 never do this — it is gemma alone.**
+
+```
+lines where seat 3 returned a NON-VERDICT              86
+...of those, stamped NIM_MODELS_RESPONDED = 3          86     <- ALL of them
+
+NIM_MODELS_RESPONDED = 3 : 1,785
+actually 3 VALID votes   : 1,699
+DELTA, hidden            :    86   of 1,801 judged  (4.78%)
+```
+
+✅ **THE CONSENSUS IS NOT CORRUPTED.** `vote()` selects
+`[v for v in votes if v and v.get("verdict") in judge.VERDICTS]`, so a non-verdict is discarded
+before the tally. No verdict on this project rests on the word `Uncategorised`.
+
+🔴 **BUT `responded()` COUNTS IT AS AN ANSWER.** It is
+`sum(1 for v in per_model if v and v.get("verdict"))` — **any truthy string**. So a line where gemma
+answered nonsense is recorded as a full three-model jury and decided by two.
+
+🔑 **THIS IS FINDING 124/125 IN A NEW COSTUME: THE COUNT IS NOT THE COVERAGE.** F124 established
+that a model can return the right *number* of verdicts and still leave lines with two votes. The
+check built for it compares the ID set sent against the ID set returned — **it never asked whether
+what came back was a verdict at all.** The same failure, one layer further in.
+
+⚠️ **AND IT MADE THE MONITOR'S OWN JURY-HEALTH TILE UNDERSTATE THE THING IT EXISTS TO SHOW.** That
+tile read `NIM_MODELS_RESPONDED`, so it reported ~0.9% thin when the true figure was 5.6%. **A
+check built on a column that lies, lies.** At production scale 4.78% is roughly **133,000 lines**
+decided by two models while the data claims three.
+
+**FIXED IN THE MONITOR, NOT IN THE JUDGE.** The tile now counts **valid votes from the votes
+themselves** — `CASE WHEN NIM_n_VERDICT IN ('Correct','Incorrect','Uncertain')` — and needs no
+change to `nim_judge.py`. It reads **`jury under 3 VALID votes`** and a red banner names the gap and
+the model responsible whenever the two disagree. The vocabulary is **imported from `judge.py`**, never
+retyped, so a fourth verdict could not silently turn real answers into junk.
+
+🟠 **THE JUDGE ITSELF IS UNFIXED AND THAT IS SAMEER'S CALL.** One line in `nim_judge.responded()` —
+count only verdicts in `judge.VERDICTS`. **Much cheaper before 40 days of compute than after**, and
+it means touching the file this whole design has deliberately left alone. **Not done. Raised.**
+
+### The two visuals Sameer asked for
+
+**1. "How much the three graders disagree" — deliberately NOT an accuracy table.**
+
+🔒 **PER-MODEL ACCURACY CANNOT BE SHOWN, AND SAYING SO WAS THE USEFUL PART.** Measured before
+proposing: `REVIEW_OVERRIDE_VERDICT`, `REVIEW_STATUS` and `REVIEWED_AT` are populated on **zero
+rows**, and the human answer key is orphaned. **There is no ground truth in this database.** Any tile
+labelled "accuracy" would be inventing its numbers. The panel says so in its own subtitle, and
+labels agreement-with-consensus as **conformity, not correctness — a model that dissents may be the
+one that is right.**
+
+What it does show is arguably worth more:
+
+```
+                                 Correct  Incorrect  Uncertain   never answered   agrees w/ consensus
+nvidia/nemotron-3-super-120b      46.9%     21.4%      31.2%          0.55%              74.7%
+openai/gpt-oss-120b               29.1%     50.5%      20.2%          0.22%              81.1%
+google/gemma-4-31b-it 🔴86 bad    29.1%     42.3%      23.8%          0.11%              83.6%
+```
+
+🔑 **THE THREE GRADERS ARE 2.4× APART ON HOW OFTEN THEY CALL A LINE INCORRECT — 21.4% against 50.5%.**
+They are not three readings of one standard. **The headline error rate therefore depends
+substantially on which two of the three happen to agree**, and anyone about to quote it should see
+that first. The page states the multiple as a sentence rather than leaving it to be eyeballed off
+the bars. It also flags **a seat whose model changes mid-run**, on the same reasoning as
+`PROMPT_VERSION`: verdicts either side of that are not comparable.
+
+**2. "Lines judged per hour", last 48 hours.**
+
+The only view on the page with a memory; every other tile answers *now*. It exists because the
+pilot's rate fell from **~10/min to 2.3/min inside an hour** as the vendor queue reached its long
+tail of tiny suppliers — caught only because someone was watching the number at that moment. Over
+~40 days this is the strip that shows an ETA drifting and roughly when it started.
+
+🔴 **AND THE FIRST VERSION OF IT LIED, IN THE SAME WAY THE HOURLY DATA INVITES.** It drew only the
+hours that had activity, so five bars sat shoulder to shoulder across **two days** and a 20-hour
+outage was invisible — the chart silently closed the gap. **A gap drawn as adjacency is a lie, and on
+a 40-day unattended run the gaps ARE the story.** Rewritten to a fixed 48-hour window with every hour
+drawn, idle ones as flat grey stubs: it now reads **"4 hours with judging, 44 idle"** on the pilot,
+and an outage will show as a trough instead of vanishing.
+
+### Checks
+
+`test_monitor.py` **44 checks, 0 failed.** ⚠️ The two new sections are **not yet unit-tested** — they
+were verified by rendering against the live pilot judge over HTTP, not by assertion. The verdict
+vocabulary being imported rather than retyped is the part that most needs a test.
+
+⚠️ **A startup bug was caught by the guard rather than by review.** The first version of the jury
+query built `SUM(CASE WHEN IS NOT NULL AND ...)` — a format template missing its column. `main()`
+refuses to serve if the opening refresh fails, so it **stopped with the SQL error instead of serving
+a broken page.** That guard earned its place today.
+
+### Next session starts here
+
+1. 🔴 **START THE PRODUCTION RUN.** `vendor_queue.py --production`, then
+   `nim_judge.py --queue --top 100 --production`, **launched DETACHED**. ⚠️ **ONE JUDGE AT A TIME.**
+2. 🟠 **DECIDE ON `responded()`** — one line in `nim_judge.py`, and far cheaper before the run than
+   after. The monitor already reports the truth either way; the stored column does not.
+3. **Then `python pipeline/monitor.py --production`.**
+4. **Watch the first hour**, and re-measure the panel cost (the page prints it).
+5. 🟠 **Six lines in `.env` for the email**, then a deliberate test alert.
+6. Quality checks, still none of them gates: the orphaned **answer key** · the **+2,210** and
+   Baseline 3 · the remaining category **definitions** · `merge_taxonomy` still reads the PILOT by
+   default · does `apply_schema.py` without `--drop` survive a populated database (F128)?
+
+### Finding 131 — ADDENDUM, same day — **BOTH FIXES APPLIED. Sameer approved touching the judge**
+
+Sameer, after the defect was explained in plain terms: **"Yes, fix both files."** So the item this
+finding recorded as *"OPEN AND ON SAMEER"* is closed within the hour.
+
+**1. `nim_judge.responded()`** — now counts only `v.get("verdict") in judge.VERDICTS`. One line.
+**This is the first change to `nim_judge.py` in this whole piece of work**, made deliberately and
+with permission, on a file the monitor was designed never to require touching.
+
+⚠️ **THE FIX IS FORWARD-ONLY, and that is why the timing mattered.** Rows already written keep their
+inflated value — the pilot's 86 stay at 3 unless re-judged. **Production has judged nothing, so
+production is correct from its first line.** Doing this after the run would have meant 40 days of
+records that could only be repaired by re-judging.
+
+⚠️ **It interacts correctly with `write()`'s top-up guard, which was checked rather than assumed.**
+That guard refuses to lower `NIM_MODELS_RESPONDED`. An old row storing 3 now recomputes as 2, and
+`3 <= 2` is false, so the guard declines the overwrite. **A top-up cannot use this fix to repair old
+rows; only a re-judge can.** Stated on the function.
+
+**2. `state_audit.py`** — the first thing read every session, and it was reading the column that
+lied. It now derives `jury<3` from `NIM_1/2/3_VERDICT` directly.
+
+🔑 **A CHECK BUILT ON AN UNVERIFIED NUMBER IS NOT A CHECK.** This file exists to test the documents
+against reality, and it had been repeating a figure it never validated — the same shape of error as
+*"a self-consistency check cannot see a contaminated input"*. It now prints **both** numbers whenever
+they disagree, because the gap is the finding.
+
+```
+BEFORE   jury health: 16 of 2,000 lines judged by fewer than 3 models (0.8%)  OK
+AFTER    jury health: 113 of 2,000 lines have fewer than 3 VALID votes (5.7%)  ** ABOVE 1% **
+              27 line(s): a model NEVER ANSWERED   -> throttling. Check --workers
+              86 line(s): a model answered with a NON-VERDICT -> --workers will NOT help
+         ** NIM_MODELS_RESPONDED claims only 27 - it counts a non-verdict as a vote, so 86
+            line(s) are STORED as a full jury while holding two. **
+              google/gemma-4-31b-it returned 'Uncategorised' on 81 line(s)
+              google/gemma-4-31b-it returned 'categorised' on 5 line(s)
+```
+
+**🔑 AND FIXING IT EXPOSED A THIRD THING: THE ADVICE WAS NOW WRONG.** The old flag read *"ABOVE 1% —
+the jury is hollowing out, **check --workers**"*, which was correct while the only cause was a model
+failing to answer (Finding 95: throttling, 16 workers is the ceiling). The moment non-verdicts became
+visible, **76% of the number had a cause that lowering `--workers` would not touch.** A single figure
+with a single remedy would have sent the next reader to tune concurrency against a model-output
+problem. **The two causes are now counted and named separately, each with its own remedy** — 27
+silent, 86 non-verdict.
+
+⚠️ **`0.8% OK` → `5.7% ABOVE 1%` IS NOT A REGRESSION.** Nothing got worse. The number was always
+5.7%; only 0.8% of it was ever visible. **Do not read the older `OK` lines in this log as evidence
+the jury was healthier then.**
+
+**Checks after both changes:** `test_monitor` 44/0 · `test_guards` 20/0 · `test_coverage` 22/0 ·
+`test_classify` 15/0.
+
+⚠️ **The running pilot judge was NOT restarted to pick this up.** Python had already loaded the old
+module, so the ~1,930 lines judged today carry the old counting. Harmless — the audit now reports the
+truth regardless of what the column says — and it means the fix has **not yet executed against a live
+model**. Its first real exercise is the production run.
+
+
+---
+
+## Finding 132 — 2026-08-26 — **`.env.example` was missing every key the live jury runs on. A new machine built from that template would look complete and be unable to judge**
+
+**How it was found.** Sameer asked which line of `.env` to paste his email into, ahead of moving to
+the office desktop. Answering meant opening the template — and the template was wrong.
+
+### 🔴 THE TEMPLATE COULD NOT PRODUCE A WORKING MACHINE
+
+`.env.example` is the file a new machine is built from, and the office desktop is exactly that. It
+carried the **superseded single-model backend** (`ANTHROPIC_API_KEY`, `JUDGE_BACKEND`, `JUDGE_MODEL`,
+`JUDGE_CONFIDENCE_THRESHOLD`, `JUDGE_BATCH_SIZE`, `JUDGE_MAX_CONCURRENCY`) and **none of the four keys
+the live jury actually uses**:
+
+```
+missing from the template, present in the real .env:
+    NIM_API_KEY      NIM_BASE_URL      NIM_MODEL      NIM_MODELS
+```
+
+**Nothing runs on the `JUDGE_*` block.** So a `.env` built faithfully from this template would be a
+complete-looking, fully-populated file that **cannot judge a single line** — and the keys it does
+carry point at a backend that was replaced. Added, with a note saying which block is dead.
+
+🔑 **A TEMPLATE IS A CLAIM ABOUT WHAT A MACHINE NEEDS, AND NOBODY HAD EVER TESTED IT.** The same
+shape as `schema.sql` sitting 30 columns adrift of the live pilot for weeks (Finding 98): a file
+everyone trusted because it looked authoritative, which nothing measured against reality. ✅ **The
+blast radius was small only by luck** — `preflight.py` *does* check `NIM_BASE_URL` / `NIM_API_KEY` /
+`NIM_MODELS` and names anything missing, so the desktop would have failed loudly at preflight rather
+than silently at judging. **The guard existed; the template it was guarding against did not.**
+
+### The stall-alert keys are in `.env`, five of six filled
+
+Appended, never rewritten — the existing content was asserted byte-identical afterwards, and no value
+in that file has been printed anywhere.
+
+```
+MONITOR_SMTP_HOST    SET      MONITOR_ALERT_FROM   SET
+MONITOR_SMTP_PORT    SET      MONITOR_ALERT_TO     SET
+MONITOR_SMTP_USER    SET      MONITOR_SMTP_PASS    ** BLANK - needs Sameer **
+```
+
+🔑 **THE SMTP HOST WAS MEASURED, NOT ASSUMED.** I was about to write `smtp.office365.com` because the
+address *looked* corporate — the project's own *"a join inferred from a column name"* error, in a
+different costume. One DNS lookup settled it: `p-i.com.au` resolves MX to
+**`pi-com-au0c.mail.protection.outlook.com`** and its SPF record includes
+**`spf.protection.outlook.com`**, so the domain is Microsoft 365 / Exchange Online and
+`smtp.office365.com:587` with STARTTLS is correct. **Had it been Google Workspace the guess would
+have been wrong and would have failed silently, at 2am, on the one night it mattered.**
+
+⚠️ `MONITOR_SMTP_PASS` stays blank deliberately — Microsoft disabled basic SMTP auth by default in
+2022, so it needs an **app password** (or IT enabling `SMTP AUTH` on that mailbox). Only Sameer can
+produce that.
+
+### 🔴 AND FILLING IN FIVE OF SIX KEYS EXPOSED A DISHONESTY IN MY OWN CODE
+
+`mail_config()` decided "ready" from `SMTP_HOST` + `ALERT_FROM` + `ALERT_TO` — **and never looked at
+the password.** With the block as it now stands the page would have printed **`email armed`**, then
+attempted a login with an empty password, been refused, and reported the failure **on the one
+occasion anyone needed the email to work.**
+
+🔒 **A MONITOR THAT CLAIMS TO BE ARMED WHEN IT CANNOT FIRE IS WORSE THAN ONE THAT SAYS NOTHING.** The
+entire point of this page is that it does not assert what it has not verified. Fixed: a configured
+`SMTP_USER` with a blank `SMTP_PASS` is **not ready**, and the reason is carried through to the page
+and the console verbatim.
+
+```
+email       ** NOT ARMED ** MONITOR_SMTP_PASS is blank - needs an app password.
+                            The page still reddens; no email will be sent
+```
+
+⚠️ A blank `SMTP_USER` remains legitimate and still counts as ready — an internal relay needing no
+authentication is a real configuration, and refusing it would have been the opposite error.
+
+**This was found by doing the thing, not by reviewing the code.** The bug existed the moment the
+function was written and survived every reading of it; it became visible the instant real values went
+into the file. `test_monitor.py` 44/0 after the change.
+
+### Next session starts here
+
+1. 🔴 **START THE PRODUCTION RUN.** `python pipeline/preflight.py` on the desktop FIRST — it names any
+   missing key in five seconds, which beats discovering it after launching a 40-day job. Then
+   `vendor_queue.py --production`, then `nim_judge.py --queue --top 100 --production`, **DETACHED**.
+   ⚠️ **ONE JUDGE AT A TIME.**
+2. **Then `python pipeline/monitor.py --production`** and watch the first hour.
+3. 🟠 **One value left: `MONITOR_SMTP_PASS`.** App password, no spaces. Then fire a deliberate test
+   alert rather than waiting for a real stall.
+4. Quality checks, still none of them gates: the orphaned **answer key** · the **+2,210** and
+   Baseline 3 · the remaining category **definitions** · `merge_taxonomy` still reads the PILOT by
+   default · does `apply_schema.py` without `--drop` survive a populated database (F128)?
+
+
+---
+
+## Finding 133 — 2026-08-26 — **🔴 THE JUDGE DIED ON A DROPPED TCP CONNECTION AFTER 2 HOURS. It holds ONE database connection for the whole run and has no reconnect. A 40-day run will not survive 40 days**
+
+**This was not a test. It happened.** The pilot judge, running `--queue` since 13:18, stopped at
+**1,977 of 2,000** with:
+
+```
+pyodbc.OperationalError ('08S01')
+  [ODBC Driver 17 for SQL Server] TCP Provider: An existing connection was forcibly
+  closed by the remote host. (10054)
+  Communication link failure (10054)
+```
+
+### 🔴 ONE CONNECTION, OPENED ONCE, FOR THE ENTIRE RUN
+
+`nim_judge.py:773` calls `connect_qa(...)` **once** in `main()` and passes that handle down through
+every vendor, every batch, every write. Grepped for the alternative and it is not there: **no
+reconnect, no `OperationalError` handler, no retry on the database side anywhere in the file.**
+
+⚠️ **THE RETRY LADDER THAT DOES EXIST IS FOR THE MODELS, NOT THE DATABASE.** `call()` retries HTTP
+requests to NIM with backoff — which is why hours of model throttling never stopped a run and made
+this look robust. **The database path has nothing.** One TCP reset ends everything.
+
+🔑 **AND IT TOOK TWO HOURS TO HAPPEN ON A QUIET AFTERNOON, ON THE SAME LAN.** The production run is
+**~40 days**. A network blip, a SQL Server memory-pressure disconnect, a switch failing over, a
+patch window — over 40 days one of these is not a risk, it is a certainty. **The measured mean time
+to failure here is about two hours.**
+
+✅ **NOTHING WAS LOST, AND THAT PART OF THE DESIGN HELD.** Selection is `NIM_VERDICT IS NULL`, so a
+plain re-run resumes exactly where it stopped; 23 lines remain unjudged and nothing is corrupt. The
+cost of a crash is **not data — it is the hours between the crash and someone noticing.** Unattended
+overnight, that is the whole night.
+
+### 🔴 AND IT REPORTED SUCCESS. EXIT CODE 0
+
+The task harness recorded **"completed (exit code 0)"** on a run that ended in an unhandled
+exception. **The cause is how I launched it** — `python pipeline/nim_judge.py --queue 2>&1 | tail -60`
+— and in a shell pipeline the exit status is the LAST command's. `tail` succeeded. Proven rather
+than reasoned:
+
+```
+python -c "raise SystemExit('boom')"                 -> crashes
+python -c "raise SystemExit('boom')" | tail -5       -> exit 0
+```
+
+🔒 **THIS IS THE PROJECT'S WORST FAILURE MODE — THE ONE THAT LOOKS LIKE SUCCESS** — and it is now on
+the runbook path. `nim_judge` is blameless; **the launch command is the defect.** ⚠️ **Tomorrow's
+desktop launch MUST NOT pipe the judge through `tail`, `head`, `more`, or a bare `tee`.** Redirect to
+a file (`> run.log 2>&1`) and the exit status is the judge's own. Anyone reading "exit 0" from a
+piped launch is reading the exit code of `tail`.
+
+### 🔑 THE MONITOR CAUGHT IT. UNPLANNED, ON A REAL CRASH
+
+This is the scenario the run-health strip was built for, and it arrived by itself four hours after
+being written:
+
+```
+state                  JUDGE MAY BE DOWN
+last verdict written   4 min ago
+stalled                True
+email                  stall alert not configured
+```
+
+**A stalled run and a finished one both stop moving** — the page told them apart correctly, with no
+prompting and nothing staged. ⚠️ **And the email did not send, because the app password is not in
+yet.** On the desktop, unattended overnight, **the page going red is only useful if someone is
+looking at it.** This crash is the argument for `MONITOR_SMTP_PASS` stated in evidence rather than in
+theory.
+
+### What to do about it — a supervisor, not a change to the judge
+
+**Recommended: a small wrapper that relaunches the judge until the queue is empty**, with backoff and
+a cap, logging every restart. It needs **no change to `nim_judge.py`** — resume is already free and
+already proven — and it is the same reasoning that kept the monitor a separate process: *the thing
+that must run for 40 days should not also be the thing being edited.*
+
+Rejected alternative: reconnect logic inside `nim_judge`. It is a bigger change, to the one file that
+must not break, and it would have to cover every call site rather than one place.
+
+⚠️ **NOT BUILT. Raised, with the measurement, for Sameer.** ⚠️ **And note what a supervisor does NOT
+fix**: it restarts a *crashed* process. A process that hangs without exiting, or a machine that
+reboots, is still only caught by a human or by the monitor's email.
+
+### Two smaller things, noted so they are not re-learned
+
+⚠️ **The traceback line numbers were nonsense** — they pointed at docstring prose. `nim_judge.py` was
+edited (the `responded()` fix) *while the process was running*, so Python rendered the traceback
+against the NEW file using the OLD line numbers. **Execution was unaffected** — the module was
+already loaded — but **a traceback from a process whose source has changed under it cannot be
+trusted, and it will mislead whoever reads it first.** Do not edit a file mid-run unless the edit is
+needed and the consequence is understood.
+
+⚠️ **Whether my own polling contributed is UNMEASURED and I am not claiming it did.** The monitor and
+several audits were reading the same server throughout. `10054` is a remote-side reset and the most
+likely causes are ordinary, but *"it was probably unrelated"* is exactly the kind of unmeasured
+comfort this project keeps banning. **Recorded as unknown.**
+
+### Next session starts here
+
+1. 🔴 **DECIDE ON THE SUPERVISOR before the run starts.** Two hours to first failure, 40 days of run.
+2. 🔴 **Launch with `> run.log 2>&1`, NEVER through a pipe.** A piped crash reports exit 0.
+3. 🟠 **`MONITOR_SMTP_PASS`** — this crash is the case for it.
+4. `preflight.py`, then `vendor_queue.py --production`, then the judge **DETACHED**, then the monitor.
+   ⚠️ **ONE JUDGE AT A TIME.**
+5. The pilot has **23 lines unjudged**. Harmless, resumable, and not worth a run on its own.
+6. Quality checks, still none of them gates: the orphaned **answer key** · the **+2,210** and
+   Baseline 3 · the remaining category **definitions** · `merge_taxonomy` still reads the PILOT by
+   default · does `apply_schema.py` without `--drop` survive a populated database (F128)?
+
+
+---
+
+## Finding 134 — 2026-08-26 — **The supervisor is built with four interlocks, all proven by making each one fire. And redesigning the dashboard for legibility uncovered two defects that were hiding in plain text**
+
+Sameer: *"yes build it, make sure it never starts two judges"* and *"render the numbers and tables
+more legible ... i want the legends and the color"*.
+
+### `pipeline/supervise.py` — restarts the judge, never runs two
+
+🔒 **THE REAL DANGER WAS NEVER A FAILED RESTART. IT IS A DOUBLE LAUNCH.** Two judges on one queue
+would both select the same `NIM_VERDICT IS NULL` rows, spend twice and race each other's writes.
+`CLAUDE.md` says ONE JUDGE AT A TIME. So there are four interlocks, and **every one fails CLOSED** —
+if a check cannot be performed it refuses to launch rather than assuming the coast is clear. A guard
+that fails open is how the GL survived prompt v4.
+
+**Each was proven by making it fire, not by reading it:**
+
+```
+A  nothing running                     -> all interlocks pass, proceeds          OK
+B  a judge process alive               -> "a judge is ALREADY RUNNING (PID ...)"  exit 1
+C  a second supervisor, lock held      -> "another supervisor is already running" exit 1
+C2 same lock, that PID now dead        -> "stale lock ... taking it over"         exit 0
+D  process query returns rc=1          -> RuntimeError, refuses to launch         FAILS CLOSED
+E  process query clean, no pids        -> [] , which means genuinely nothing      OK
+```
+
+🔑 **D IS THE ONE THAT MATTERS.** `running_judges()` raises rather than returning `[]` when it
+cannot tell, because **an empty list is a positive statement that nothing is running** and the caller
+launches on the strength of it. A failed query returning `[]` would read exactly like a clear coast.
+
+⚠️ **AND MY OWN TEST OF B REPRODUCED FINDING 133 IMMEDIATELY.** I piped the check through `tail` and
+read `exit code: 0` on a refusal that had correctly exited 1. **The same defect, in the test written
+to check for it, within an hour of recording it.** Re-run without the pipe: exit 1.
+
+**Interlock 2 re-runs before EVERY launch**, not just at startup — the lock file cannot see a judge
+someone started by hand while the supervisor was sleeping between restarts.
+
+**Barren-attempt guard.** It counts attempts that judged **zero** lines, not attempts that failed. A
+judge exiting 0 having done nothing would otherwise relaunch forever and the log would read like
+progress. Five consecutive barren attempts and it stops.
+
+**It never pipes the child.** stdout goes to a file, the returncode comes off the process object.
+
+### 🔴 THE COST OF A RESTART IS NOT ZERO, AND I NEARLY LET THAT GO UNSAID
+
+`judge_queue` walks **every vendor** and calls `judge_client` twice per vendor; a vendor with nothing
+left still costs two queries. Measured on the pilot during this very run: **643 vendors, ~30 minutes,
+almost all of it skipping.**
+
+```
+production: 29,469 vendors  ->  roughly 1.5-2 HOURS of re-walking per restart
+                                before the judge reaches any new work
+```
+
+⚠️ **So the supervisor is still worth it — an overnight idle is 7-14 hours against ~2 — but restarts
+are NOT free, and ten of them would spend a day re-walking.** `TRACKER.md` already carried "~2h
+across the whole 40-day run" for this walk; **what was never said is that it is per RUN, and a
+supervisor makes runs plural.**
+
+🟠 **There is an obvious cheap fix and I have NOT taken it:** `qa_vendor_queue.QUEUE_STATUS` is
+maintained (the pilot reads `done 389 · in_progress 12 · pending 242`), so the queue select could
+filter `QUEUE_STATUS <> 'done'`. **That is a change to `nim_judge.py` and it is Sameer's call.**
+⚠️ It also needs thought before it is taken: the queue supplying *order* while `NIM_VERDICT IS NULL`
+decides *work* is deliberate — a queue that believed its own progress record would be Finding 93
+wearing different clothes.
+
+### The dashboard: fewer words, and two defects found by looking at it
+
+**What changed.** One hero row — judged %, days left, signed spend, vendors — at a size readable
+across a desk. A **colour key stating that colour means one thing only**: green fine, amber watch, red
+act. Health tiles rewritten value-first. Tables given zebra rows, tabular figures and right-aligned
+numbers. **All the prose moved to a folded footer.**
+
+🔒 **NOTHING THAT GUARDS A NUMBER WAS DROPPED TO TIDY UP.** The banner is still permanent and still
+first; every rate still prints its own denominator beneath it; there is still no export button.
+**Shortening a sentence is not the same as deleting one** — the full reasoning is in the footer,
+under headings, one click away.
+
+#### 🔴 DEFECT 1 — "signed spend covered: 100.4%"
+
+The hero showed **more than 100% of spend covered while 16 lines were still unjudged**: judged
+$2,499,837.95 against a total of $2,489,724.83, because the lines still outstanding carried a **net
+negative** spend.
+
+🔑 **A SHARE OF A SIGNED TOTAL IS NOT A MEANINGFUL QUANTITY.** The standing rule — spend exactly as
+held, no netting, no absolute values — already forbade this and I walked past it: the moment you
+divide one signed total by another you have done arithmetic the data does not support, and the result
+reads as *finished* to anyone glancing at it. **The percentage is gone. Both figures are shown**, with
+the line counts in the tile beside them, which is what *"always report line counts alongside spend"*
+is for.
+
+#### 🔴 DEFECT 2 — 500 judged lines rendering as nothing
+
+The action breakdown drew only the six known `NIM_ACTION` values. `action_classify.py` runs **after**
+judging, so a run in progress has no action on any line — **which is the normal state of the thing
+this page exists to watch.** The result: an empty bar and an empty table next to the words "500
+judged". Five hundred lines silently absent from the one panel meant to account for all of them, and
+nothing looked broken.
+
+🔑 **A BREAKDOWN THAT DOES NOT RECONCILE TO ITS OWN TOTAL IS WORSE THAN NO BREAKDOWN.** Anything
+outside the six values is now drawn in neutral grey and named (`not classified yet`), and a red row
+appears if the segments ever fail to sum to the judged count. Melbourne now reads
+`not classified yet · 500 · 100.0%` instead of blank.
+
+⚠️ **Both were found by rendering the real page against a live judge — neither by reading the code
+nor by any test.** `test_monitor.py` 44/0 throughout; it never had an opinion about either.
+
+### Next session starts here
+
+1. 🔴 **START THE PRODUCTION RUN, under the supervisor:**
+   `python pipeline/preflight.py`, then `python pipeline/vendor_queue.py --production`, then
+   `python pipeline/supervise.py --production --top 100 > run.log 2>&1`, **DETACHED**. ⚠️ **Never
+   through a pipe** (F133). Then `python pipeline/monitor.py --production`.
+2. 🟠 **Decide the queue skip** — `QUEUE_STATUS <> 'done'` would cut ~2 hours off every restart, and
+   it is a change to `nim_judge.py`.
+3. 🟠 **`MONITOR_SMTP_PASS`** — the app password. Then a deliberate test alert.
+4. **Watch the first hour on production**: the cold-scan cost, and whether the ETA is sane at 2.79M.
+5. Quality checks, still none of them gates: the orphaned **answer key** · the **+2,210** and
+   Baseline 3 · the remaining category **definitions** · `merge_taxonomy` still reads the PILOT by
+   default · does `apply_schema.py` without `--drop` survive a populated database (F128)?
+
+### Finding 134 — ADDENDUM — **The supervisor ran the pilot to completion. 2,000 of 2,000, and the exit code is trustworthy this time**
+
+```
+15:35:11  supervisor starting  (pilot)
+15:35:12  interlock: no judge process running  OK
+15:35:12  interlock: supervisor lock taken (PID 18816)
+15:35:12  unjudged at start: 23
+15:35:13  --- attempt 1: launching judge, output -> judge-20260826T153511-001.log
+15:50:31  attempt 1 finished: exit 0, judged 23 line(s), 0 still unjudged
+15:50:31  ** QUEUE EMPTY - nothing left unjudged. 1 attempt(s), 0.3 hours. **
+15:50:31  supervisor lock released
+```
+
+**One attempt, no restart needed, and it stopped by itself when the queue emptied** rather than
+looping. The lock file is gone, and no supervisor or judge process is left behind — checked, not
+assumed.
+
+🔑 **AND THIS EXIT CODE MEANS SOMETHING.** It was launched with `> file 2>&1`, not through a pipe, so
+`exit 0` is the supervisor's own status and not `tail`'s. Finding 133's second half, applied the
+first time it mattered.
+
+**THE PILOT IS NOW FULLY JUDGED — 2,000 of 2,000, all four hospitals, zero unjudged.** It had been
+sitting at 1,413 judged since the 25th.
+
+⚠️ **THE `responded()` FIX RAN BUT WAS NEVER TRIGGERED.** The supervisor launched a fresh judge
+process *after* the fix, so the new code executed against a live model for the first time. But the
+non-verdict count **stayed at exactly 86** across all 23 newly judged lines — gemma returned nothing
+malformed this time, so **the branch that filters a non-verdict has still never actually fired in
+anger.** The code path is exercised; the specific behaviour is not. Do not record this as proof the
+fix works — record it as the fix being in place and untested on real junk.
+
+⚠️ **Dropout was high in the tail, on small numbers.** Silent (model never answered) went 27 → 32
+across those 23 lines: five of them lost a model. The tail of the vendor queue is one-line vendors,
+so a batch is a single line and a dropout there is both more likely to be noticed and more costly
+per line. **Not alarming at n=23, and not dismissible either** — worth watching in production's first
+hour, where the same effect would show up at the END of the run rather than the start.
+
+**Final pilot state:**
+
+```
+melbourne_health   500 judged   C 120  I 221  U 159
+northern_health    500 judged   C 152  I 208  U 140
+sydney_adventist   500 judged   C 199  I 129  U 172
+western_health     500 judged   C 127  I 180  U 193
+TOTAL            2,000 judged   0 unjudged
+
+jury health  118 of 2,000 have fewer than 3 VALID votes (5.9%)  ** ABOVE 1% **
+               32 a model never answered      -> throttling, --workers
+               86 a model returned a non-verdict -> --workers will not help
+NIM_ACTION   (none) on all 2,000 - action_classify.py has not been run on this generation
+```
+
+⚠️ **`NIM_ACTION` is unset on every line**, which is why the dashboard's per-hospital breakdown reads
+`not classified yet · 100.0%`. That is correct and expected — `action_classify.py` runs after
+judging — and it is exactly the state that exposed the vanishing-lines defect in Finding 134.
+
+### Finding 134 — ADDENDUM 2 — **Dashboard polish: tinted panels, gridlines, two hospitals per row, and the em dashes gone**
+
+Sameer, 2026-08-26: *"create some colored wrappers ... right now it does look a bit too white, some
+greidlines added where required at the bottom of the page ... tidy it up a bit into 2 hospitals on 1
+line ... avoid the excessive em dashes as well"*.
+
+**Tinted panels.** The lower half of the page now sits in five bordered blocks
+(`hero · key · strip · panel · legend · grid · panel alt · panel`, verified in the served HTML)
+rather than one white scroll. ⚠️ **The tints carry NO meaning, and are deliberately kept far from
+the ok/amber/red palette.** Severity is the only colour on this page that means anything; a
+decorative tint mistakable for a warning would cost more than a white page ever did. Both light and
+dark values are defined, and the invalid selector left over from the first pass
+(`:root:not(...) @media {}`) was removed.
+
+**Gridlines** on the tables at the foot: vertical rules between columns, a heavier rule under the
+header, zebra rows, and a border around the table. Those tables are five columns of names and
+figures; without a vertical rule the eye loses which number belongs to which column two rows in.
+
+**Two hospitals per row, and the order was already right.** `repeat(auto-fit, ...)` gave one, two or
+three per row depending on the window, so the pairing moved about. Now `repeat(2, minmax(0,1fr))`,
+collapsing to one column under 820px. Verified in the rendered page:
+
+```
+row 1, col 1  Melbourne Health          row 1, col 2  Northern Health
+row 2, col 1  Sydney Adventist Hospital row 2, col 2  Western Health
+```
+
+The order needed no code: the cards sort by `client_code`, which happens to be exactly
+melbourne, northern, sydney, western.
+
+🔑 **AND THE CASCADE HID A REAL BUG.** `dashboard.CSS` also defines `.grid`, with `padding:16px 22px
+26px`. Mine set `margin` and never reset that padding, so the cards were being indented **twice** by
+rules from two different files. Found by reading the CSS the server actually sent rather than the
+CSS I wrote. `padding:0` added, with the reason on the line.
+
+⚠️ **My first check of that cascade was WRONG and nearly hid it.** I took "the last `.grid` rule in
+the stylesheet" as the winner, which is the one inside `@media (max-width:820px)` and applies only
+to narrow windows. It reported the desktop layout as broken when it was fine. **A check that reads
+the right file and asks the wrong question is still a wrong answer** — corrected to ignore rules
+inside the media query.
+
+**Em dashes.** Every one in the visible prose is gone, replaced by the punctuation that was actually
+meant: a colon where it introduced, a full stop where it joined two sentences, a middle dot where it
+separated fields. ⚠️ **Five remain and stay** — `—` as the placeholder in a cell with no value, which
+is what that character is for. The em dash used as a general-purpose joiner is what made the page
+feel wordy; the sentences underneath were mostly fine.
+
+🔑 **AND THE TEST SUITE CAUGHT ME MID-TIDY.** Rewriting the banner capitalised *"largest vendors
+first"*, and `test_monitor.py` failed on the exact-case check. That is the test doing its job.
+⚠️ **The fix was to make it case-insensitive, and that is a loosening I am recording rather than
+slipping in:** the guarantee is that the phrase is still THERE, and a test that fails on
+capitalisation trains whoever hits it to edit the test, after which it guards nothing. Missing is
+still a failure; capitalised is not.
+
+**`test_monitor.py` 44/0.** ⚠️ **None of this was visually verified by me** — I checked the served
+HTML and CSS, the card order, the cascade and the class structure. **Whether it actually looks right
+is Sameer's call, at `http://127.0.0.1:8000`.**
+
+### Finding 134 — ADDENDUM 3 — **Colouring the hospital cards exposed that "vendors done" was reading a column that lies. `QUEUE_STATUS` under-reports permanently after any resume**
+
+Sameer: *"for the 4 hospital wrappers can you add some color and center the names, easier to read"*.
+
+**Done: a coloured header band per hospital, name centred, white on a mid-tone hue.**
+
+🔒 **AND THE COLOUR HAD TO BE CHOSEN CAREFULLY, BECAUSE COLOUR ON THIS PAGE ALREADY MEANS SEVERITY.**
+Green fine, amber watch, red act — stated in the key at the top. A second colour scale is a real
+hazard: a card washed in a hue near amber reads as a warning about that hospital, and then **both**
+scales stop being trusted. So the identity hues sit deliberately outside the severity range (blue,
+teal, violet, magenta — no green, no amber, no red), and they are applied **only to a header band**,
+which reads as a label, never to a card body and never to a number.
+
+🔒 **AND THEY ARE ASSIGNED BY POSITION, NEVER BY NAME.** *No client names anywhere in `pipeline/`,
+ever* — so there is no hospital-to-colour map in the file. The Nth client in sorted `client_code`
+order takes the Nth hue: deterministic, stable between runs, and still correct if a fifth hospital is
+added. **Verified by stripping every docstring and comment from `monitor.py` and grepping the
+executable code for hospital names: zero hits.**
+
+### 🔴 AND LOOKING AT THE FINISHED CARDS FOUND THE REAL DEFECT
+
+The card read:
+
+```
+Western Health     500 judged of 500 lines  ·  vendors 6/185
+```
+
+**100% of lines judged, and 6 of 185 vendors "done".** Measured against the database:
+
+```
+QUEUE_STATUS says   western_health    6 done · 179 pending
+                    sydney_adventist  105 done · 12 in_progress · 63 pending
+qa_line says        every client      0 unjudged of 500
+```
+
+**TWO CAUSES, AND THE SECOND IS PERMANENT RATHER THAN ACCIDENTAL:**
+
+1. **A crash leaves a vendor mid-flight**, so its status is never written — Sydney's 12 stuck at
+   `in_progress` are the wreckage of Finding 133, hours after that judge died.
+2. ~~🔴 **`judge_queue` does `if not n: skipped += 1; continue` — a vendor with nothing left to judge
+   is skipped BEFORE it is marked done.** So on **any** resumed run, every already-finished vendor
+   stays `pending` for ever. This is not a crash artefact; it is what resume does by design.~~
+   ⛔ **WRONG — corrected the same day in Finding 135. There is no marking step to skip:
+   `nim_judge.py` does not contain the string `QUEUE_STATUS` at all.** The real cause is simpler and
+   covers cause 1 as well — **nothing has EVER updated the column.** `vendor_queue.py` derives it
+   once at build time and it drifts from that moment. Left standing, struck, because the error is
+   the instructive part: **a mechanism inferred from reading a loop that looked like it ought to
+   write the column, rather than measured by asking what does.** One `grep` settled it.
+
+⚠️ **AND THE SUPERVISOR MAKES IT WORSE, NOT BETTER.** Restarts are now routine, and every restart
+re-walks the queue skipping finished vendors, none of which get marked. **The feature I built this
+morning would have made this number progressively more wrong all through the 40-day run.**
+
+**Fixed in the monitor, not in the judge.** Vendors finished is now **counted from `qa_line`** — how
+many vendors have zero unjudged lines — rather than read from a stored flag. It needs no change to
+`nim_judge.py` and it cannot go stale. **Same reasoning as jury health in Finding 131: a check built
+on a column that lies, lies.** The queue table is still the source of the ORDER; it is simply no
+longer trusted for PROGRESS.
+
+```
+before   389 of 643 vendors        after   643 of 643 vendors, matching 2,000 of 2,000 lines
+         western_health 6/185              western_health 185/185
+```
+
+⚠️ **`judging now` was reading the same column and is now suppressed unless the judge is
+demonstrably alive** and there is work left. The pilot carried 12 stale `in_progress` rows for hours
+after its judge had died, so that tile was naming a vendor nobody was working on. **A stale vendor
+name beside a dead judge is worse than no vendor name, because it reads as activity.**
+
+🟠 **The judge itself is still unfixed and that is deliberate.** `QUEUE_STATUS` remains wrong in the
+database; only the page is now right. Marking a skipped vendor done is a change to `nim_judge.py`,
+and it is a decision for Sameer alongside the `QUEUE_STATUS <> 'done'` filter already raised in
+Finding 134 — **the two are the same column and should be decided together, not one at a time.**
+
+✅ **SETTLED THE SAME DAY IN FINDING 135, and NEITHER of those two turned out to be the right move.**
+Sameer's question was *"does it add value and increase the accuracy?"* — accuracy, **no**, not at
+all; time, **2.70 hours per restart**, measured on production. So the judge now **derives** what is
+still open from `qa_line` in one 0.41s query, and `QUEUE_STATUS` is neither maintained nor filtered
+on. **A stored flag would still be wrong after a crash mid-vendor;** the lines cannot be.
+
+**`test_monitor.py` 44/0.** ⚠️ **Nothing here was visually verified by me** — the served HTML, the
+hues, the card order and the class structure were checked. Whether it reads well is Sameer's call.
+
+
+---
+
+## Finding 135 — 2026-08-26 — the judge now skips finished vendors on a resume: **2.70 hours → 0.41 seconds**, measured on production
+
+**And Finding 134's stated cause was WRONG. Correcting it first, because the wrong cause pointed at
+the wrong fix.** I wrote there that `judge_queue` skipped a vendor before marking it done. There is
+no marking step to skip: **`nim_judge.py` does not contain the string `QUEUE_STATUS` anywhere.**
+`vendor_queue.py` line 125 derives it from `qa_line` once, at build time, and nothing updates it
+ever again. It is a photograph, not a gauge. ~~judge_queue skips before marking done~~ — struck.
+
+🔑 **The error is this project's recurring one in a new costume: a mechanism INFERRED from
+reading a loop that looked like it ought to update the column, rather than MEASURED by asking what
+writes it.** One `grep` settled it. Same shape as the join inferred from a column name and the
+fan-out inferred from schema structure — and it felt like diligence both times.
+
+**One consequence of the real cause is useful:** the staleness runs ONE WAY. Judging is forward-only,
+so a row that read `done` at build time IS still done; it is `pending` and `in_progress` that rot.
+
+---
+
+**THE MEASUREMENT THAT DECIDED IT — production, 2026-08-26, 2,786,018 lines / 29,469 vendors:**
+
+```
+probe of ONE already-finished vendor                    0.18 s   (measured 3x, warm)
+the judge probes each vendor TWICE (cat + uncat)        0.36 s per finished vendor
+29,469 vendors, all finished                            2.70 HOURS per restart, judging nothing
+
+the same question asked ONCE as a GROUP BY on qa_line   0.41 s   (measured 2x, all 29,469)
+```
+
+**2.70 hours against 0.41 seconds.** Sameer, shown both options: *"yeah for it, if it saves time if
+the judge happens to crash"*. ⚠️ **It buys TIME AND NOTHING ELSE — accuracy is untouched**, and that was
+the question he actually asked: every line is still judged, every verdict is identical.
+
+**DERIVED, NOT STORED, AND THAT WAS THE REAL DECISION.** The obvious alternative was to have the
+judge maintain `QUEUE_STATUS`. Rejected: a stored flag is still wrong after a crash mid-vendor, costs
+29,469 extra writes, and creates a second definition of "done" free to disagree with the lines.
+**`nim_judge.vendors_with_work()` asks `qa_line` instead.** It cannot go stale because it is not kept.
+
+**🔒 IT MATCHES `emit_batch`'S ARMS, AND THERE ARE TWO THAT FIND WORK, NOT ONE.** This is the part
+that would have silently lost lines:
+
+```
+arm 1   NIM_VERDICT IS NULL                      never judged
+arm 4   NIM_MODELS_RESPONDED < 3, --topup only   JUDGED, but by a hollowed-out jury
+```
+
+A skip built on arm 1 alone walks past every thin-jury line on a `--topup` run **and reports
+success** — the fix queue that comes back short and reads as *"nothing to fix there"*. Proved on the
+pilot: a normal resume finds **0** vendors with work, `--topup` finds **18**, holding the 32 lines
+that would otherwise have been abandoned for good.
+
+**🔒 IT FAILS CLOSED, THREE WAYS.** Skipping too few costs time and is visible; skipping too many
+loses work and nothing looks broken. Not symmetrical, so every uncertainty resolves to *judge it*:
+
+1. the resume scan itself errors → walk every vendor, print the reason;
+2. a queue name the scan never saw → judge it and warn. **The skip matches a queue name against a
+   line name in PYTHON, and Python's `==` is not SQL's** — the trailing-space lesson that would have
+   let 524,923 clinical lines through a pandas gate. A name that fails to match must never read as
+   *finished*;
+3. `--topup` → widen the test, never narrow it.
+
+**⚠️ THE SKIP IS APPLIED AFTER `--top`, AND THE ORDER IS THE POINT.** `--top 100` names a FIXED SET,
+the STOP AND LOOK slice. Filter first and a resume would top the list back up with vendors 101, 102,
+103 — **the same command judging a different population on the second run than the first, silently.**
+Both call sites are pinned by a test that reads the source order.
+
+**Verified end to end on the fully judged pilot** — the exact "resume with everything done" case:
+
+```
+resume check: 0 of 643 vendors still have work (0.01s)
+skipping 20 already finished - 0 to go
+NOTHING LEFT TO JUDGE - every vendor in this slice is complete.        exit 0, no model called
+```
+
+and on production, where nothing is judged yet: **29,469 of 29,469 still have work — nothing skipped**,
+which is the direction that matters.
+
+**`pipeline/test_resume.py` is new: 17 checks, no database.** It pins all three fail-closed paths,
+the two-hospitals-same-vendor case, the `SUPPLIER_NAME IS NULL` vendor, and the after-`--top` order.
+🔑 It caught one bug in itself worth recording: the `QUEUE_STATUS` check read the function's whole
+source and failed on the **docstring explaining why the column is not used**. Ask the executable
+code, never the prose about it — which is exactly how the GL survived v4.
+
+**`schema.sql` now says on the column itself that it is as-at-build and must never be read for
+progress.** The column is kept, not dropped: it is a true record of the build.
+
+**Suites: test_resume 17/0 · test_monitor 44/0 · test_guards 20/0 · test_coverage 0 failed ·
+test_classify 15/0.**
+
+🟠 **STILL OPEN, and it is the number that decides whether this mattered: HOW OFTEN THE JUDGE
+ACTUALLY TRIPS.** The saving per restart is measured; the restart rate is `n=1` (Finding 133). At one
+crash a day this saves a few hours over the run; at Finding 133's two-hour interval it is the
+difference between finishing and not. **`output/logs/supervise-*.log` is the measurement** — it is
+tracked in git for exactly this reason. Read it after the first week and put a real number here.
+
+**Next session starts here:**
+1. **Nothing is committed.** 22 changed/new files.
+2. `MONITOR_SMTP_PASS` — Sameer only. Then fire a deliberate stall alert and confirm it lands.
+3. Decision 8 in `APP.md` — the filtered index for the cold-scan case.
+4. Production run order: `preflight.py` → `vendor_queue.py --production` →
+   `supervise.py --production` detached and **never piped** → `monitor.py --production`.
+
+**Addendum, same day — the judging path proven, not just the skipping path.** `--queue --topup`
+run to completion on the pilot: **625 vendors skipped, 18 kept, 32 lines judged in 15.7 min,
+exit 0.** The line that matters is the last one — **`0 vendors already complete`.** That counter
+fires when `emit_batch` finds nothing in a vendor the pre-filter had kept, so **zero means the fast
+answer and the real one agreed on all 643**. A disagreement there would have been the first sign of
+the skip and the judge drifting apart.
+
+✅ **And it was a real repair, not only a test: thin juries 32 → 1.** One line survives — a vendor
+where a model keeps returning something that is not a verdict, which is Finding 131's defect showing
+its face again rather than a fault in the resume. Noted, not chased.

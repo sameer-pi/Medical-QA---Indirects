@@ -39,6 +39,7 @@ status section was wrong for 15 days on exactly this failure.
 | `PROJECT-BRIEF (shareable).md` | Plain-language version | **The only doc cleared to share.** No credentials, no server details, no provisional figures |
 | `JUDGING-RULES (Indirects).md` | How the judge decides — evidence hierarchy + the nine adjudication rules | Internal. Every rule states the measurement behind it. Update it when `PROMPT_VERSION` moves |
 | `DEPLOYMENT-CONCEPT (Indirects QA in PIDA).md` | Thought-stage concept for the analyst review module in the PIDA app | Internal. Not a build plan — revisit when we get to that stage |
+| `APP.md` | The **live run monitor** — a read-only local page watching the 40-day judging run. Feasibility, parameters, safety rules, six open decisions | Internal. **Discussion, not a build plan — nothing is built.** 🔒 It is NOT the analyst app Sameer killed on 2026-08-21: it writes nothing, has no analyst in it, is not a deliverable. If it ever grows a review screen, an override or a client login, **stop and ask**. Its *status* still lives in `TRACKER.md`, not here |
 | `ACTIONS.md` | Sameer's to-do list | Keep current — tick things off as they land |
 | `RUN_LOG.md` | Dated record of every run and finding | Append-only |
 | `pipeline/` | All code | **No client names anywhere in here.** Ever |
@@ -86,10 +87,27 @@ any check that runs today: `--all` caps at 100,000 lines and reports success, fi
 2,000-row assertions, `fetchall()` over the whole population, and the recovery model below. **Pilot-
 passing is not evidence about production for anything whose failure mode is size.**
 
-🔴 **RECOVERY MODEL IS STILL `FULL` ON BOTH DATABASES.** Measured 2026-08-18. `SET RECOVERY SIMPLE`
+~~🔴 **RECOVERY MODEL IS STILL `FULL` ON BOTH DATABASES.** Measured 2026-08-18. `SET RECOVERY SIMPLE`
 has never run — not on production, and not on the pilot since 2026-07-30. It needs `db_owner`, which
 `Claude` deliberately lacks. **Do not start a bulk load until it is SIMPLE**: under FULL with no log
-backup scheduled, the log grows until the volume fills. It is in `ACTIONS.md` § 2a.
+backup scheduled, the log grows until the volume fills. It is in `ACTIONS.md` § 2a.~~
+
+🔓 **WITHDRAWN 2026-08-25 by measurement — `RUN_LOG.md` Finding 126. The recovery model is still
+`FULL` and that is FINE, because the premise of the rule was false: there IS a backup chain, and
+there always was.** Nobody had looked at `msdb.dbo.backupset` — a hazard argued from the recovery
+model alone for a week, which is the "measure a risk before raising it" rule broken in the document
+that states it. **Re-measured 2026-08-26, the morning of the go/no-go:**
+
+```
+PI_Medical_QA_Indirect        FULL   log_reuse_wait = NOTHING
+  full  2026-08-26 00:15   4,257.3 MB      log  2026-08-26 01:23   85.2 MB
+```
+
+`log_reuse_wait = NOTHING` means nothing is blocking the log from truncating. ⚠️ **Two things worth
+knowing rather than fearing: log backups run ONCE DAILY, not hourly, and production's log file is
+already 12,616 MB against 4,257 MB of data.** The judging run adds ~70,000 row UPDATEs a day, which
+is small beside that — but **if the log ever starts growing across days rather than being reclaimed,
+that is a finding, and `log_reuse_wait` is where it will show.**
 
 **Write access.** The pipeline writes to the **QA databases** — pilot and production — and nothing
 else. The four client databases and the MSD are **read-only, always**. No exceptions, no temp tables,
