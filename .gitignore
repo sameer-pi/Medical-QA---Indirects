@@ -58,6 +58,13 @@ env.bak
 output/logs/supervise.lock
 output/logs/judge-*.log
 
+# Virtual environments. A venv created INSIDE the clone is thousands of untracked files sitting
+# next to the code; `git add -A` would commit an entire Python installation. The office desktop has
+# one (2026-09-16), so this is not hypothetical.
+.venv/
+venv/
+ENV/
+
 # Python
 __pycache__/
 *.py[cod]

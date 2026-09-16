@@ -3903,6 +3903,76 @@ preflight ran on from there.
 The desktop session found these two in minutes by trying to execute the files; both had been read,
 edited and committed here without being run on a machine that resembled the target.
 
+
+### Addendum 5, same day — 🔴 **THE FIX FOR THE LAUNCHER WAS ITSELF CORRUPTED, AND MY TEST OF IT PASSED FOR THE WRONG REASON**
+
+The desktop session, on the venv fix pushed an hour earlier: *"START-PRODUCTION-RUN.cmd has 4 BEL
+bytes where the backslash-a belongs ... The fix that was meant to stop the Store stub is itself
+defeated by the Store stub."* **Correct in every particular.**
+
+```
+intended   .venv\Scriptsctivate.bat
+actual     .venv\Scripts  +  0x07  +  ctivate.bat
+```
+
+**Cause:** the patch was applied through a heredoc that halved every backslash before Python saw it.
+`\S` is not a valid escape so it survived as `\S`; **`` IS a valid escape and became BEL, silently.**
+One of the two mangled itself and the other did not, which is why the line still looked plausible.
+⚠️ **It then happened a SECOND time in the repair attempt** — the same heredoc halved the same
+backslash again, and the "fix" re-inserted the identical byte. Only writing the bytes numerically
+(`bytes([92, 97])`, no escape sequence anywhere) actually landed it.
+
+#### 🔑 THE REAL FAILURE IS THE TEST, NOT THE BYTE
+
+**This launcher WAS run after the edit, and it printed `Virtual environment: none found`** — which
+was read as the correct fallback. It was. **This laptop has no venv, so the branch that was broken
+was never taken.** A test that cannot reach the changed line is not a test of the change, and it
+returns a clean result, which is worse than no test at all.
+
+**Re-tested properly this time: a real venv was created here specifically so the branch had to
+execute.**
+
+```
+Virtual environment: .venv
+Python:              ...\Medical QA - Indirects\.venv\Scripts\python.exe
+```
+
+The branch fires and the interpreter resolves **into the venv** — the thing that was asserted last
+time and is now measured. The venv was deleted afterwards.
+
+🔴 **Third defect of one family in this file: LF endings (f35aab9), then BEL bytes, both
+introduced by an editor and neither visible in `git diff`.** The desktop session named the general
+form: *"the file was edited by something that mangled a byte, and not executed afterwards."*
+**A batch file must be verified by its BYTES and by EXECUTION on a machine shaped like the target,
+never by reading the diff** — `git diff` renders both defects as a perfect line.
+
+**Also fixed:** `.venv/`, `venv/`, `ENV/` added to `.gitignore`. A venv inside the clone is thousands
+of untracked files beside the code, and the desktop now has one — `git add -A` there would have
+committed an entire Python installation.
+
+#### ✅ AND THE RUN IS OTHERWISE READY — PREFLIGHT PASSED ON THE DESKTOP
+
+First measurement ever taken on the machine that will do the work: **13 of 13, exit 0, `** GO **`.**
+
+```
+database      PI_Medical_QA_Indirect        (production, correctly scoped)
+write         proven by a ROLLED-BACK UPDATE, not by a role list
+run_id        1                             (no superseded generation)
+rows          2,786,018 - all still unjudged
+queue         29,469 vendors, GLOBAL_RANK complete
+NIM           nvidia/nemotron-3-super-120b-a12b answered in 0.8s, 3 models configured
+```
+
+⚠️ `ANTHROPIC_API_KEY` blank is fine — the backend is NIM and preflight requires `SQL_PASS` and
+`NIM_API_KEY` only. `MONITOR_SMTP_PASS` still blank and **preflight does not check it**, so the
+overnight email remains untested.
+
+⚠️ **And `.env` arrived on the desktop as `env`, dotless — it was never a duplicate, it was the
+ONLY copy.** The conditional delete in the instruction held: *"If `.env` does NOT exist, stop and
+tell me."* It did not exist, the session stopped, and the file was **renamed rather than deleted**.
+🔑 **Deleting what looks like a stray copy would have destroyed the only credentials on the
+machine**, with no clone or pull able to restore them.
+
 **Next session starts here:**
 1. Sameer reviews the `PLAN.md` v3.22 change table (123–142) — still the standing gate.
 2. Sameer reads `DEPLOYMENT-CONCEPT (Indirects QA in PIDA).md` — the open questions in § 9 are

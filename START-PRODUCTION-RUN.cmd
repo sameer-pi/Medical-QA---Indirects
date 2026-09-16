@@ -14,11 +14,11 @@ REM
 REM  Activating here makes double-click and "run it from an activated window" behave identically,
 REM  which is the point: the correct way to start this must not depend on remembering a step.
 REM ==================================================================================================
-if exist ".venv\Scriptsctivate.bat" (
-    call ".venv\Scriptsctivate.bat"
+if exist ".venv\Scripts\activate.bat" (
+    call ".venv\Scripts\activate.bat"
     echo   Virtual environment: .venv
-) else if exist "venv\Scriptsctivate.bat" (
-    call "venv\Scriptsctivate.bat"
+) else if exist "venv\Scripts\activate.bat" (
+    call "venv\Scripts\activate.bat"
     echo   Virtual environment: venv
 ) else (
     echo   Virtual environment: none found - using the system Python
