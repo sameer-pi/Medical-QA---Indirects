@@ -12,6 +12,22 @@
 .env.bak
 !.env.example
 
+# 🔴 THE DOTLESS COPIES. Found on the office desktop 2026-09-16 by the Claude session there:
+# a file named `env` - no dot - sitting in the clone with live SQL logins for five databases and
+# the Anthropic key in it, matching NONE of the four patterns above. `git check-ignore` returned
+# exit 1: NOT ignored. It was the only untracked file in the repo, so a single `git add -A` would
+# have put live credentials into permanent history - the exact outcome the block at the top of this
+# file exists to prevent, defeated by a missing full stop.
+#
+# It gets there honestly: Teams and Windows both dislike a leading dot, so `.env` becomes `env` or
+# `env.txt` in transit, and the person who renames it to send it is not the person who remembers to
+# rename it back. The ignore list has to cover the shapes the file arrives in, not just the shape
+# it is supposed to have.
+env
+env.txt
+env.bak
+*.env
+
 # =====================================================================================
 # NOT IGNORED, DELIBERATELY - the irreplaceable files live under output/ and they must
 # travel between machines. Do NOT add output/ to this list:

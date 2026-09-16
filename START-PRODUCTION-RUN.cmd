@@ -3,6 +3,47 @@ setlocal
 cd /d "%~dp0"
 
 REM ==================================================================================================
+REM  USE THE PROJECT'S VIRTUAL ENVIRONMENT, IF THERE IS ONE.
+REM
+REM  Added 2026-09-16. This file calls bare `python` four times. A venv created in C:\QA is NOT
+REM  active when the file is double-clicked from Explorer, so every one of those calls would have
+REM  used the system interpreter - which on the office desktop is the WINDOWS STORE STUB, and does
+REM  not run Python at all. The failure is not a traceback; it is a Store advert, at the gate of a
+REM  40-day run. Found by the desktop Claude session before launch, not by anyone here.
+REM
+REM  Activating here makes double-click and "run it from an activated window" behave identically,
+REM  which is the point: the correct way to start this must not depend on remembering a step.
+REM ==================================================================================================
+if exist ".venv\Scriptsctivate.bat" (
+    call ".venv\Scriptsctivate.bat"
+    echo   Virtual environment: .venv
+) else if exist "venv\Scriptsctivate.bat" (
+    call "venv\Scriptsctivate.bat"
+    echo   Virtual environment: venv
+) else (
+    echo   Virtual environment: none found - using the system Python
+)
+
+REM --- PROVE python actually runs before anything depends on it. The Store stub exits non-zero
+REM --- here, so this turns "an advert opened" into a sentence that says what to do.
+python -c "import sys; sys.exit(0)" >nul 2>&1
+if errorlevel 1 (
+    echo.
+    echo   ** STOPPED - `python` on this machine does not run.
+    echo.
+    echo      Most likely the Windows Store stub rather than a real Python.
+    echo      If you made a virtual environment, check it is called .venv or venv
+    echo      and sits directly inside this folder. Nothing has been started.
+    echo.
+    pause
+    exit /b 1
+)
+
+REM --- Say WHICH interpreter is about to judge 2.79m lines. One line, and it ends the entire
+REM --- class of "it says pyodbc is missing but I installed it" confusion.
+for /f "delims=" %%P in ('python -c "import sys; print(sys.executable)"') do echo   Python:              %%P
+
+REM ==================================================================================================
 REM  START THE INDIRECTS JUDGING RUN - the office desktop, production, ~40 days.
 REM
 REM  Sameer, 2026-08-27, on how the move to the desktop should feel:
