@@ -14973,7 +14973,9 @@ A finding nobody will read is a finding that was not recorded.
 **The repair moved text and changed nothing else, and that was verified rather than asserted:**
 the whole file was compared against `HEAD` as a multiset of lines — **exactly two lines differ, both
 of them the `Addendum 5 → Addendum 6` renumber** made because the desktop session had independently
-written its own Addendum 5 at the true end. Line count unchanged at 14,954. No wording was edited.
+written its own Addendum 5 at the true end. **Line count unchanged BY THE MOVE at 14,954** — the file is 14,985 with this note in it, because this note is itself new content. No wording was edited.
+
+⚠️ **That sentence originally read "Line count unchanged at 14,954" and sat in a 14,985-line file.** Caught by the desktop session on re-measurement. True of the move, false of the file it was describing — **a figure that was accurate when taken and reads as current where it sits**, which is this log's own standing error and the one that made `PLAN.md`'s status section stale. 🔑 **A measurement has to carry what it was measured ON, not just when.**
 
 ⚠️ **This is a move, not a rewrite — the append-only rule is about never altering what a finding
 SAID.** The desktop session was right to stop and hand it back rather than reorder the log on its
