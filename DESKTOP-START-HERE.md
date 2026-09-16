@@ -54,8 +54,9 @@ believing 2.79M are under way.
 ### It announces itself in three places. Check at least one.
 
 ```
-1  THE YES PROMPT      "This starts judging 2,786,018 lines on PI_Medical_QA_Indirect."
-                       If that sentence says 2,000 or says Pilot - answer anything but YES.
+1  THE YES PROMPT      DATABASE   PI_Medical_QA_Indirect            (PRODUCTION)
+                       If that line does not name PI_Medical_QA_Indirect,
+                       answer anything but YES.
 
 2  THE JUDGE WINDOW    "supervisor starting  (PRODUCTION)"
                        It prints the word. If it does not say PRODUCTION, close it.
@@ -63,6 +64,10 @@ believing 2.79M are under way.
 3  THE DASHBOARD       the page names its own database.
                        PRODUCTION / PI_Medical_QA_Indirect - or stop and ask.
 ```
+
+⚠️ **That prompt used to read *"This starts judging 2,786,018 lines ... about 40 days"* and it was
+WRONG** — the launcher runs `--top 100`, which is 483,313 lines and about a day. Corrected
+2026-09-16. If you are ever looking at a copy that still says 40 days, you have an old clone.
 
 ⚠️ **A pilot page reads 100% complete and perfectly healthy while production sits untouched.** That
 is the one way this whole set-up can mislead you, which is why it is checked three times.

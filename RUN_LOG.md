@@ -14568,9 +14568,45 @@ session not to start the judge by hand at all.
 implicit — a procedure that is correct while its reader follows it exactly, which is not what a
 runbook is for. Found by the reader, not by the writer.
 
+
+### Addendum, same day — 🔴 **THE CONFIRMATION GATE LIED ABOUT ITS OWN JOB. Sameer found it by asking which numbered step starts the 2M-line run.**
+
+*"which number in this setup tells the model to start judging the 2M lines?"* **None of them — and
+that was not obvious from the launcher, because the launcher said otherwise.**
+
+```
+START-PRODUCTION-RUN.cmd line 47   "This starts judging 2,786,018 lines on PI_Medical_QA_Indirect."
+START-PRODUCTION-RUN.cmd line 48   "It runs for about 40 days and restarts itself if it crashes."
+START-PRODUCTION-RUN.cmd line 67   supervise.py --production --top 100
+```
+
+**483,313 lines and about a day, announced as 2,786,018 lines and about 40 days.** A 5.8×
+overstatement on the ONE screen whose entire purpose is to tell the reader what they are committing
+to before they type YES.
+
+🔑 **A confirmation gate that overstates its own job trains the reader to stop reading it** —
+and this one is the last point of no return before ~40 days of compute. Finding 138 §2 had already
+established that `--top 100` is a hard stop and documented it in prose; **the prose was right and the
+executable text next to it was wrong**, which is the worse half to get wrong because it is the half
+that gets read at 9am on launch morning.
+
+⚠️ **AND MY OWN NUMBERED INSTRUCTIONS INHERITED IT.** The step-by-step list given in chat told
+him to read that sentence and type YES if it said 2,786,018 — building the pilot-vs-production check
+on top of a sentence that was already wrong about the scope. The check happened to still
+discriminate (the pilot would say 2,000), so it would have worked while being wrong.
+
+**Fixed.** The gate now prints the database, the slice, the line count, the duration, and
+`THIS IS LAUNCH 1 OF 2` before asking for YES; the closing screen prints the launch-2 command and
+says the exit is deliberate. `DESKTOP-START-HERE.md` updated to match, and it names the old wording
+so an old clone is recognisable.
+
+🔑 **Both defects this session were found by the reader, not the writer, and both by the same
+question: *what will this actually do when I run it?*** The runbook's first version said "step 5 is a
+double-click" without saying the default was the pilot; its second said "read the sentence" without
+checking whether the sentence was true.
+
 **Next session starts here:**
-1. 🔴 **PUSH. `DESKTOP-START-HERE.md` is worthless until it is on GitHub** — the desktop gets it by
-   clone. Committed but not pushed as of this entry.
+1. ✅ **PUSHED** — `de05f6b`, then the launcher correction on top of it.
 2. **Measure production before starting anything.** Three weeks of silence; nothing establishes
    whether a run was started on the desktop.
 3. **After launch 1 finishes (~a day), look at real verdicts BEFORE launch 2.** Get the true

@@ -42,13 +42,28 @@ if errorlevel 1 (
 
 REM --- 2. One confirmation. This commits roughly 40 days of compute against the real database;
 REM ---    a single keypress is proportionate to that, and it is the last point of no return.
+REM ---    🔴 THIS SCREEN USED TO SAY "2,786,018 lines ... about 40 days". IT WAS WRONG, and wrong
+REM ---    in the one place built to tell you what you are committing to. This launches --top 100:
+REM ---    483,313 lines and about a day. Sameer found it on 2026-09-16 by asking which numbered
+REM ---    step starts the 2M-line run - the answer being that none of them does. A confirmation
+REM ---    gate that overstates its own job trains the reader to stop reading it.
 echo.
 echo   ================================================================
-echo    This starts judging 2,786,018 lines on PI_Medical_QA_Indirect.
-echo    It runs for about 40 days and restarts itself if it crashes.
+echo    DATABASE   PI_Medical_QA_Indirect            (PRODUCTION)
+echo    THIS RUN   the top 100 vendors of 29,469
+echo               483,313 lines of 2,786,018  (17.3%%)
+echo               about ONE DAY, then it STOPS on purpose.
+echo.
+echo    THIS IS LAUNCH 1 OF 2. It does NOT judge everything.
+echo    The remaining ~2.3m lines need a second launch, and you decide
+echo    that one after looking at these verdicts. Nothing is wasted:
+echo    launch 2 skips the finished vendors in under a second.
 echo   ================================================================
 echo.
-set /p GO="   Type YES to start, anything else to cancel: "
+echo    If the database above does not say PI_Medical_QA_Indirect,
+echo    answer anything but YES.
+echo.
+set /p GO="   Type YES to start launch 1, anything else to cancel: "
 if /i not "%GO%"=="YES" (
     echo.
     echo   Cancelled. Nothing was started.
@@ -89,6 +104,19 @@ echo    closed and reopened whenever you like - it only watches.
 echo.
 echo    CHECK THE PAGE SAYS "PRODUCTION" AND NAMES
 echo    PI_Medical_QA_Indirect. If it says pilot, stop and ask.
+echo.
+echo   ----------------------------------------------------------------
+echo    WHEN THIS FINISHES (about a day) THE JUDGE EXITS ON PURPOSE.
+echo    That is not a crash - it is the end of launch 1, the top 100
+echo    vendors. The dashboard will sit at roughly 17%% and stay there.
+echo.
+echo    Look at the verdicts, THEN start launch 2 for the rest:
+echo.
+echo        python pipeline\supervise.py --production ^> output\logs\run.log 2^>^&1
+echo.
+echo    Same command, WITHOUT --top 100. Run it in its own window and
+echo    never through a pipe. It resumes at vendor 101 and re-judges
+echo    nothing. That one is the ~40 day run.
 echo   ================================================================
 echo.
 pause
