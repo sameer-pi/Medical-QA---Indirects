@@ -3814,6 +3814,35 @@ lock** — nothing was started.
 confirmation gate overstated its job 5.8×. *"are you sure it will work?"* → **it did not run at
 all.** Each one was in a file that had been read, edited and committed without being executed.
 
+
+### Addendum 3, same day — **GIT WAS NOT ON THE OFFICE DESKTOP, and `preflight.py` does not check for it**
+
+Sameer, at step 3 on the desktop: *"'git' is not recognized as an internal or external command."*
+
+**The runbook's step 1 is `git clone`. Nothing in this project had ever asked whether git was
+there.** `preflight.py` checks Python, pyodbc, the ODBC driver, `.env`, the SQL connection and
+NVIDIA — six things chosen 2026-08-26 as *"five things that can stop it that live on THAT machine"*.
+**Git is a seventh, and it stops the run one step EARLIER than any of them**, before there is a repo
+for preflight to live in. A checker that ships inside the thing it checks cannot check whether you
+can obtain the thing.
+
+🔑 **It was invisible because of where it was written.** Every check in `preflight.py` is a
+thing that was *thought about* on a machine that already had git. The blind spot is not the ODBC
+driver we remembered to check — it is the tool used to do the checking.
+
+⚠️ **And the desktop is an ML box: Python and CUDA present, git absent.** The mental model of
+"a developer machine has git" does not hold for a machine bought to run models.
+
+**Fixed in the runbook, not in code** — a new **step 0** listing the three things that must already
+exist (git, Python, ODBC Driver 17), each with the command that proves it, and which of them `pip`
+cannot install. **Deliberately not added to `preflight.py`**: by the time preflight can run, git has
+already succeeded.
+
+🔴 **With the trap that follows it: after installing git, the ALREADY-OPEN command window still
+fails with the identical error**, because a running shell does not pick up a changed PATH. That
+reads as a failed install when the install was fine, and it is the next thing that would have cost
+him twenty minutes.
+
 **Next session starts here:**
 1. Sameer reviews the `PLAN.md` v3.22 change table (123–142) — still the standing gate.
 2. Sameer reads `DEPLOYMENT-CONCEPT (Indirects QA in PIDA).md` — the open questions in § 9 are

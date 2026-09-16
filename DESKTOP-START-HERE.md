@@ -97,6 +97,27 @@ The monitor is read-only and safe to start and kill at any time. It never touche
 
 ---
 
+## Step 0 — the three things that must already be on this machine
+
+**None of these can be sent over Teams and none is installed by anything below.** `preflight.py`
+checks two of the three; **it does not check git**, because git was never absent on the laptop it
+was written on.
+
+| Needed | Check it with | If missing |
+|---|---|---|
+| **Git** | `git --version` | https://git-scm.com/download/win — accept every default |
+| **Python 3.9+** | `python --version` | Anaconda or python.org |
+| **ODBC Driver 17 for SQL Server** | step 4 below names it | Download from Microsoft. ⚠️ **`pip` cannot install this one** |
+
+🔴 **After installing ANY of them, CLOSE the command window and open a new one.** A window that was
+already open does not see a newly installed program, gives the exact same
+`'git' is not recognized` error, and reads as a failed install when the install was fine.
+
+⚠️ **Measured 2026-09-16: git was NOT on the office desktop.** It is an ML box — Python and CUDA were
+there, git was not. Do not assume the other two are present either.
+
+---
+
 ## The five steps
 
 ```
