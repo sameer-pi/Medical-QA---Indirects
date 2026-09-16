@@ -14832,3 +14832,123 @@ checking whether the sentence was true.
 4. `MONITOR_SMTP_PASS` still blank. Re-run `fire_alert.py` **on the desktop** — 587 may be filtered
    there and preflight does not check it.
 5. **`README.md` below `## Setup` is pilot-era and unverified.** Marked, not fixed.
+
+
+### Addendum 5, 2026-09-16 — **THE DESKTOP IS PROVISIONED AND PREFLIGHT-PASSING. The venv branch executed from a cold launcher, and `.env` arrived DOTLESS — renamed, never deleted**
+
+Everything below was **executed on the run machine itself**, not read from a diff. This machine is
+now the machine of record for the run.
+
+#### 1. 🔴 `.env` DID NOT EXIST. The dotless `env` was the ONLY copy, not a duplicate
+
+The instruction was to delete the stray `env` **if** `.env` was present and complete. It was not:
+
+```
+dir /a C:\QA\.env          ->  File Not Found
+forced listing, C:\QA      ->  .env.example   2,629 B   16/09/2026 1:54:57 PM
+                               env            6,248 B   16/09/2026 1:55:42 PM
+```
+
+**Deleting it would have destroyed the live credentials outright**, and `CLAUDE.md` records that
+`.env` travels between machines BY HAND, once, outside GitHub — so no clone or pull would have
+brought it back. Stopped instead, and Sameer directed the rename.
+
+🔑 **The 45 seconds between the two timestamps is the whole story**: 1:54:57 on `.env.example`,
+1:55:42 on `env`. The template was copied, filled in, and saved without the leading dot — Windows
+and Explorer both dislike a leading dot, exactly the transit failure `.gitignore` now anticipates.
+
+`env` → `.env`, 6,248 bytes intact. **29 keys, none missing against `.env.example`.** Two empty:
+`ANTHROPIC_API_KEY` (correctly irrelevant — `JUDGE_BACKEND` is NIM, and preflight requires only
+`SQL_PASS` and `NIM_API_KEY`) and `MONITOR_SMTP_PASS` (still open, see below). Working tree clean,
+`.gitignore:10` covers it. **Values were never printed** — the check reports key names and character
+counts only.
+
+#### 2. The launcher is byte-clean, verified independently before it was run
+
+```
+BEL 0x07            0
+control bytes       0
+CRLF              163
+bare LF             0
+.venv\Scripts\activate.bat   present, intact
+```
+
+#### 3. THE VENV BRANCH FIRED — the thing the fix existed to do
+
+Run cold via `cmd`, not from an already-activated shell:
+
+```
+  Virtual environment: .venv
+  Python:              C:\QA\.venv\Scripts\python.exe
+```
+
+A real path **inside** `.venv`. Both previous versions of this file reached neither line.
+
+⚠️ **The Store stub is real on this machine and was hit during the session** — a plain `python`
+invocation returned *"Python was not found; run without arguments to install from the Microsoft
+Store"*. That is the exact failure the venv branch and the `python -c "import sys"` proof exist to
+prevent, observed rather than hypothesised.
+
+#### 4. PREFLIGHT 13/13 — ** GO **, against PRODUCTION
+
+Run twice, standalone and from inside the launcher, both passing:
+
+```
+  OK   writing to the right database      PI_Medical_QA_Indirect
+  OK   write permission on qa_line        proven by a rolled-back UPDATE
+  OK   exactly one run_id in qa_line      1 run_id, 2,786,018 rows
+  OK   vendor queue built                 29,469 vendors, GLOBAL_RANK complete
+  OK   how much is left to judge          2,786,018 of 2,786,018 unjudged
+  OK   NVIDIA NIM reachable               nvidia/nemotron-3-super-120b-a12b answered in 0.8s / 2.7s
+```
+
+**Nothing has been judged.** 2,786,018 of 2,786,018 unjudged answers Finding 139's open question —
+*"nothing establishes whether the run was started on the desktop"* — **it was not.**
+
+#### 5. THE GATE WAS REACHED AND CANCELLED ON EMPTY INPUT. Nothing was started
+
+Run with stdin from `NUL`, so the gate received EOF and no one typed anything:
+
+```
+Type YES to start launch 1, anything else to cancel:
+  Cancelled. Nothing was started.
+exit code 0
+```
+
+`set /p` leaves `GO` unset on EOF, `%GO%` expands empty, and `if /i not "" == "YES"` takes the
+cancel branch. 🔑 **The gate is fail-safe on no input** — worth recording, because it means a
+double-click that loses its console, or a launcher driven by a script with no keyboard, **cancels
+rather than launches**. Confirmed after the fact by measurement, not by reading the branch: no
+`supervise.py`, `nim_judge.py` or `monitor.py` process running, and no `output\logs\supervise.lock`.
+
+Verified safe **before** executing: every `start` is at lines 123, 128 and 133, all **after** the
+gate at line 107. Only `preflight.py` (line 74, read-only) runs ahead of it.
+
+#### 6. The environment, as built
+
+`.venv` from Anaconda, `C:\QA\.venv` — **pyodbc 5.3.0 · PyYAML 6.0.3 · pandas 3.0.5 · openpyxl
+3.1.5**. `ODBC Driver 17 for SQL Server` present. All nine packages report already-satisfied on
+re-run, so `requirements.txt` is untouched and **pandas is NOT pinned**, as instructed.
+
+⚠️ **Two drifts recorded, neither acted on.** Python is **3.14.6**; `CLAUDE.md` says 3.13.
+`pandas>=2.0` resolved to **3.0.5**, a major version — the judge run path imports no pandas, so
+judging is unaffected, but the workbook and taxonomy scripts do and **have not been run under 3.0**.
+Stated as untested, not as a known break.
+
+#### What this does NOT establish
+
+- **Whether the run works for more than one prompt.** Preflight proves reachability, not 40 days.
+- **`MONITOR_SMTP_PASS` is still blank and preflight does not check it.** Alert email is untested on
+  this machine. Carried from Finding 139 unchanged.
+- **The workbook and taxonomy tools under pandas 3.0.5.** Not run.
+
+**Next session starts here:**
+1. **This machine is provisioned, preflight-passing, and has judged nothing.** Launch 1 is a
+   decision, not a leftover — `START-PRODUCTION-RUN.cmd`, then type YES.
+2. **After launch 1 finishes (~a day), look at real verdicts BEFORE launch 2.** Unchanged from 139.
+3. `MONITOR_SMTP_PASS` — re-run `fire_alert.py` here; 587 may be filtered on this network.
+4. ⚠️ **`RUN_LOG.md` Addendums 2, 3 and 4 are in the WRONG PLACE in this file** — lines ~3759–3890,
+   under the `2026-08-06` deployment-concept entry, about 11,000 lines above where they belong.
+   The file is otherwise strictly chronological (Findings 110→139 ascend cleanly). Not moved:
+   this log is append-only and reordering it is Sameer's call. **A reader who opens the tail sees
+   this entry and the confirmation-gate addendum, and misses three others entirely.**
