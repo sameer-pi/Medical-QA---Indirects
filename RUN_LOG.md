@@ -3756,223 +3756,6 @@ Nothing in `PLAN.md` changed — this is a future-stage concept, not a change to
 record. `CLAUDE.md`'s file table gained one row.
 
 
-### Addendum 2, same day — 🔴 **THE LAUNCHER DID NOT RUN AT ALL. `START-PRODUCTION-RUN.cmd` HAD BEEN LF-ONLY SINCE THE COMMIT THAT CREATED IT, AND cmd.exe MIS-PARSES THAT.**
-
-Found by asking "are you sure it will work?" and then **actually running the thing** instead of
-reasoning about it. The answer was no.
-
-```
-'M' is not recognized as an internal or external command,        <- REM
-'cho.' is not recognized as an internal or external command,     <- echo
-'thon' is not recognized as an internal or external command,     <- python
-...20 of them, then:
-  ** STOPPED - preflight did not pass. Nothing has been started.
-```
-
-**A Windows batch file must be CRLF.** Given LF-only, cmd.exe reads a byte count and drops leading
-characters on the following lines. The file is perfect in every editor, passes any review by eye,
-and fails the instant it is double-clicked — **with an error message that blames preflight**, because
-the line that launches preflight was eaten too.
-
-```
-10a404a  CRLF=0  bare LF=94     <- the commit that CREATED it
-a500410  CRLF=0  bare LF=94
-de05f6b  CRLF=0  bare LF=94
-eee6f02  CRLF=0  bare LF=122    <- after my edit. Same defect, more of it
-```
-
-🔴 **IT WAS NEVER MINE TO INTRODUCE AND IT WAS ALSO NEVER TESTED.** Finding 137 states this
-launcher was *"Tested by running it and cancelling at the prompt: preflight passed 13/13, the gate
-was reached, `Cancelled. Nothing was started.`"* **That claim does not survive re-testing** — the
-file in that commit cannot reach its own preflight line. Whatever was checked that day, it was not
-this file being executed by cmd.exe. **A recorded test is not a test.**
-
-🔑 **AND THE HAZARD WAS DISGUISED AS A NON-HAZARD BY `core.autocrlf`.** This laptop has
-`autocrlf=true`, so a fresh clone HERE gets CRLF and works, which is exactly how this would have
-survived a "well, just clone it and see". **The office desktop's git config has never been seen.**
-Default Git-for-Windows sets autocrlf=true, so it would probably have been fine — *probably*, on
-launch morning, decided by a setting on a machine nobody has looked at.
-
-**Fixed with `.gitattributes`, not with a one-off conversion:**
-
-```
-*.cmd  text eol=crlf
-*.bat  text eol=crlf
-```
-
-`eol=crlf` forces CRLF **on checkout regardless of the machine's `core.autocrlf`**. The working copy
-was normalised too (122 CRLF, 0 bare LF).
-
-**RE-TESTED, AND THIS TIME THE OUTPUT IS THE EVIDENCE.** Full run of the launcher on this laptop:
-preflight reached and returned `** GO **` against production, the corrected gate rendered with the
-right figures (`PI_Medical_QA_Indirect` / 483,313 of 2,786,018 / 17.3% / `LAUNCH 1 OF 2`), the
-cancel path fired, and a process query afterwards found **no python process and no supervisor
-lock** — nothing was started.
-
-🔑 **Three defects this session, all found by Sameer asking a plain question, none by review.**
-*"will it start the pilot?"* → the default is the pilot. *"which step starts the 2M lines?"* → the
-confirmation gate overstated its job 5.8×. *"are you sure it will work?"* → **it did not run at
-all.** Each one was in a file that had been read, edited and committed without being executed.
-
-
-### Addendum 3, same day — **GIT WAS NOT ON THE OFFICE DESKTOP, and `preflight.py` does not check for it**
-
-Sameer, at step 3 on the desktop: *"'git' is not recognized as an internal or external command."*
-
-**The runbook's step 1 is `git clone`. Nothing in this project had ever asked whether git was
-there.** `preflight.py` checks Python, pyodbc, the ODBC driver, `.env`, the SQL connection and
-NVIDIA — six things chosen 2026-08-26 as *"five things that can stop it that live on THAT machine"*.
-**Git is a seventh, and it stops the run one step EARLIER than any of them**, before there is a repo
-for preflight to live in. A checker that ships inside the thing it checks cannot check whether you
-can obtain the thing.
-
-🔑 **It was invisible because of where it was written.** Every check in `preflight.py` is a
-thing that was *thought about* on a machine that already had git. The blind spot is not the ODBC
-driver we remembered to check — it is the tool used to do the checking.
-
-⚠️ **And the desktop is an ML box: Python and CUDA present, git absent.** The mental model of
-"a developer machine has git" does not hold for a machine bought to run models.
-
-**Fixed in the runbook, not in code** — a new **step 0** listing the three things that must already
-exist (git, Python, ODBC Driver 17), each with the command that proves it, and which of them `pip`
-cannot install. **Deliberately not added to `preflight.py`**: by the time preflight can run, git has
-already succeeded.
-
-🔴 **With the trap that follows it: after installing git, the ALREADY-OPEN command window still
-fails with the identical error**, because a running shell does not pick up a changed PATH. That
-reads as a failed install when the install was fine, and it is the next thing that would have cost
-him twenty minutes.
-
-
-### Addendum 4, same day — **THE DESKTOP SESSION FOUND A CREDENTIALS FILE OUR `.gitignore` DID NOT COVER, AND A LAUNCHER THAT WOULD NOT HAVE RUN PYTHON AT ALL**
-
-Four findings from the Claude session on the office desktop, before a single line was judged. Two
-of them matter.
-
-#### 1. 🔴 A file called `env` — no dot — holding live credentials, NOT ignored
-
-`.gitignore` covers `.env`, `.env.*`, `.env.bak`. **A bare `env` matches none of them.**
-`git check-ignore` returned exit 1. It was the only untracked file in the clone, so **one
-`git add -A` would have written live SQL logins for five databases and the Anthropic key into
-permanent history** — the precise outcome the comment block at the top of that file was written to
-prevent, defeated by a missing full stop.
-
-🔑 **It gets there honestly, and that is why it will happen again.** Teams and Windows both
-dislike a leading dot, so `.env` becomes `env` or `env.txt` in transit — advice **this session gave
-him directly** (*"rename your copy to env.txt, send that, then rename it back"*). The rename-back is
-a step a person does; the ignore list has to cover the shapes the file **arrives** in, not the shape
-it is supposed to end up as. **A secret-handling rule that depends on someone finishing a two-step
-rename is not a rule.**
-
-**Fixed:** `env`, `env.txt`, `env.bak` and `*.env` added, each pattern verified with
-`git check-ignore` (all four IGNORED) and `.env.example` re-checked as still visible to git —
-because an over-broad pattern that hides the template is the obvious way to fix this badly.
-
-#### 2. ⚠️ The launcher would not have run Python on that machine
-
-`START-PRODUCTION-RUN.cmd` calls bare `python` four times. **A venv in the clone folder is not
-active when the file is double-clicked from Explorer**, so all four would have used the system
-interpreter — which on the office desktop is the **Windows Store stub** and does not run Python at
-all. The desktop session hit it for real: `state_audit.py` returned a Store advert rather than a
-traceback.
-
-🔴 **This was raised as a warning here and would still have shipped as one.** The venv was
-discussed in chat, the trap was described in chat, and the file was left calling bare `python`.
-**A hazard named in conversation and not written into the executable is a hazard that ships.**
-
-**Fixed in the file, not in the runbook:** it now activates `.venv` or `venv` if either exists,
-**proves the interpreter actually runs** before anything depends on it (the Store stub exits
-non-zero, so it is caught and explained rather than shown as an advert), and **prints
-`sys.executable`** — one line that ends the entire class of *"it says pyodbc is missing but I
-installed it"*. Tested here: correctly reported `none found`, named the Anaconda interpreter, and
-preflight ran on from there.
-
-#### 3 and 4. Recorded, NOT acted on — deliberately
-
-* **pandas 3.0.5 installed, not 2.x** (`requirements.txt` says `>=2.0`). **The judge path does not
-  import pandas at all** — measured when that file was written, not assumed now. Workbook and
-  taxonomy scripts do, and are **untested under pandas 3**. Not pinned: it cannot affect the run,
-  and editing dependencies at the gate of a 40-day launch buys nothing today.
-* **Python 3.14.6 on the desktop; `CLAUDE.md` says 3.13.** ⚠️ **Nothing in this codebase has ever
-  run on 3.14.** `preflight.py` only asserts `>= 3.9`, so it will pass and it is not evidence. Phase
-  1 is ~1 day and reversible, which makes it an acceptable test of an untested interpreter — but if
-  the judge behaves oddly in the first hours, **this is the first thing to suspect**, and it should
-  not be re-derived from scratch then.
-
-🔑 **Every defect in this session was found by running something, and none by reading it.**
-The desktop session found these two in minutes by trying to execute the files; both had been read,
-edited and committed here without being run on a machine that resembled the target.
-
-
-### Addendum 5, same day — 🔴 **THE FIX FOR THE LAUNCHER WAS ITSELF CORRUPTED, AND MY TEST OF IT PASSED FOR THE WRONG REASON**
-
-The desktop session, on the venv fix pushed an hour earlier: *"START-PRODUCTION-RUN.cmd has 4 BEL
-bytes where the backslash-a belongs ... The fix that was meant to stop the Store stub is itself
-defeated by the Store stub."* **Correct in every particular.**
-
-```
-intended   .venv\Scriptsctivate.bat
-actual     .venv\Scripts  +  0x07  +  ctivate.bat
-```
-
-**Cause:** the patch was applied through a heredoc that halved every backslash before Python saw it.
-`\S` is not a valid escape so it survived as `\S`; **`` IS a valid escape and became BEL, silently.**
-One of the two mangled itself and the other did not, which is why the line still looked plausible.
-⚠️ **It then happened a SECOND time in the repair attempt** — the same heredoc halved the same
-backslash again, and the "fix" re-inserted the identical byte. Only writing the bytes numerically
-(`bytes([92, 97])`, no escape sequence anywhere) actually landed it.
-
-#### 🔑 THE REAL FAILURE IS THE TEST, NOT THE BYTE
-
-**This launcher WAS run after the edit, and it printed `Virtual environment: none found`** — which
-was read as the correct fallback. It was. **This laptop has no venv, so the branch that was broken
-was never taken.** A test that cannot reach the changed line is not a test of the change, and it
-returns a clean result, which is worse than no test at all.
-
-**Re-tested properly this time: a real venv was created here specifically so the branch had to
-execute.**
-
-```
-Virtual environment: .venv
-Python:              ...\Medical QA - Indirects\.venv\Scripts\python.exe
-```
-
-The branch fires and the interpreter resolves **into the venv** — the thing that was asserted last
-time and is now measured. The venv was deleted afterwards.
-
-🔴 **Third defect of one family in this file: LF endings (f35aab9), then BEL bytes, both
-introduced by an editor and neither visible in `git diff`.** The desktop session named the general
-form: *"the file was edited by something that mangled a byte, and not executed afterwards."*
-**A batch file must be verified by its BYTES and by EXECUTION on a machine shaped like the target,
-never by reading the diff** — `git diff` renders both defects as a perfect line.
-
-**Also fixed:** `.venv/`, `venv/`, `ENV/` added to `.gitignore`. A venv inside the clone is thousands
-of untracked files beside the code, and the desktop now has one — `git add -A` there would have
-committed an entire Python installation.
-
-#### ✅ AND THE RUN IS OTHERWISE READY — PREFLIGHT PASSED ON THE DESKTOP
-
-First measurement ever taken on the machine that will do the work: **13 of 13, exit 0, `** GO **`.**
-
-```
-database      PI_Medical_QA_Indirect        (production, correctly scoped)
-write         proven by a ROLLED-BACK UPDATE, not by a role list
-run_id        1                             (no superseded generation)
-rows          2,786,018 - all still unjudged
-queue         29,469 vendors, GLOBAL_RANK complete
-NIM           nvidia/nemotron-3-super-120b-a12b answered in 0.8s, 3 models configured
-```
-
-⚠️ `ANTHROPIC_API_KEY` blank is fine — the backend is NIM and preflight requires `SQL_PASS` and
-`NIM_API_KEY` only. `MONITOR_SMTP_PASS` still blank and **preflight does not check it**, so the
-overnight email remains untested.
-
-⚠️ **And `.env` arrived on the desktop as `env`, dotless — it was never a duplicate, it was the
-ONLY copy.** The conditional delete in the instruction held: *"If `.env` does NOT exist, stop and
-tell me."* It did not exist, the session stopped, and the file was **renamed rather than deleted**.
-🔑 **Deleting what looks like a stray copy would have destroyed the only credentials on the
-machine**, with no clone or pull able to restore them.
-
 **Next session starts here:**
 1. Sameer reviews the `PLAN.md` v3.22 change table (123–142) — still the standing gate.
 2. Sameer reads `DEPLOYMENT-CONCEPT (Indirects QA in PIDA).md` — the open questions in § 9 are
@@ -14834,7 +14617,224 @@ checking whether the sentence was true.
 5. **`README.md` below `## Setup` is pilot-era and unverified.** Marked, not fixed.
 
 
-### Addendum 5, 2026-09-16 — **THE DESKTOP IS PROVISIONED AND PREFLIGHT-PASSING. The venv branch executed from a cold launcher, and `.env` arrived DOTLESS — renamed, never deleted**
+### Addendum 2, same day — 🔴 **THE LAUNCHER DID NOT RUN AT ALL. `START-PRODUCTION-RUN.cmd` HAD BEEN LF-ONLY SINCE THE COMMIT THAT CREATED IT, AND cmd.exe MIS-PARSES THAT.**
+
+Found by asking "are you sure it will work?" and then **actually running the thing** instead of
+reasoning about it. The answer was no.
+
+```
+'M' is not recognized as an internal or external command,        <- REM
+'cho.' is not recognized as an internal or external command,     <- echo
+'thon' is not recognized as an internal or external command,     <- python
+...20 of them, then:
+  ** STOPPED - preflight did not pass. Nothing has been started.
+```
+
+**A Windows batch file must be CRLF.** Given LF-only, cmd.exe reads a byte count and drops leading
+characters on the following lines. The file is perfect in every editor, passes any review by eye,
+and fails the instant it is double-clicked — **with an error message that blames preflight**, because
+the line that launches preflight was eaten too.
+
+```
+10a404a  CRLF=0  bare LF=94     <- the commit that CREATED it
+a500410  CRLF=0  bare LF=94
+de05f6b  CRLF=0  bare LF=94
+eee6f02  CRLF=0  bare LF=122    <- after my edit. Same defect, more of it
+```
+
+🔴 **IT WAS NEVER MINE TO INTRODUCE AND IT WAS ALSO NEVER TESTED.** Finding 137 states this
+launcher was *"Tested by running it and cancelling at the prompt: preflight passed 13/13, the gate
+was reached, `Cancelled. Nothing was started.`"* **That claim does not survive re-testing** — the
+file in that commit cannot reach its own preflight line. Whatever was checked that day, it was not
+this file being executed by cmd.exe. **A recorded test is not a test.**
+
+🔑 **AND THE HAZARD WAS DISGUISED AS A NON-HAZARD BY `core.autocrlf`.** This laptop has
+`autocrlf=true`, so a fresh clone HERE gets CRLF and works, which is exactly how this would have
+survived a "well, just clone it and see". **The office desktop's git config has never been seen.**
+Default Git-for-Windows sets autocrlf=true, so it would probably have been fine — *probably*, on
+launch morning, decided by a setting on a machine nobody has looked at.
+
+**Fixed with `.gitattributes`, not with a one-off conversion:**
+
+```
+*.cmd  text eol=crlf
+*.bat  text eol=crlf
+```
+
+`eol=crlf` forces CRLF **on checkout regardless of the machine's `core.autocrlf`**. The working copy
+was normalised too (122 CRLF, 0 bare LF).
+
+**RE-TESTED, AND THIS TIME THE OUTPUT IS THE EVIDENCE.** Full run of the launcher on this laptop:
+preflight reached and returned `** GO **` against production, the corrected gate rendered with the
+right figures (`PI_Medical_QA_Indirect` / 483,313 of 2,786,018 / 17.3% / `LAUNCH 1 OF 2`), the
+cancel path fired, and a process query afterwards found **no python process and no supervisor
+lock** — nothing was started.
+
+🔑 **Three defects this session, all found by Sameer asking a plain question, none by review.**
+*"will it start the pilot?"* → the default is the pilot. *"which step starts the 2M lines?"* → the
+confirmation gate overstated its job 5.8×. *"are you sure it will work?"* → **it did not run at
+all.** Each one was in a file that had been read, edited and committed without being executed.
+
+
+### Addendum 3, same day — **GIT WAS NOT ON THE OFFICE DESKTOP, and `preflight.py` does not check for it**
+
+Sameer, at step 3 on the desktop: *"'git' is not recognized as an internal or external command."*
+
+**The runbook's step 1 is `git clone`. Nothing in this project had ever asked whether git was
+there.** `preflight.py` checks Python, pyodbc, the ODBC driver, `.env`, the SQL connection and
+NVIDIA — six things chosen 2026-08-26 as *"five things that can stop it that live on THAT machine"*.
+**Git is a seventh, and it stops the run one step EARLIER than any of them**, before there is a repo
+for preflight to live in. A checker that ships inside the thing it checks cannot check whether you
+can obtain the thing.
+
+🔑 **It was invisible because of where it was written.** Every check in `preflight.py` is a
+thing that was *thought about* on a machine that already had git. The blind spot is not the ODBC
+driver we remembered to check — it is the tool used to do the checking.
+
+⚠️ **And the desktop is an ML box: Python and CUDA present, git absent.** The mental model of
+"a developer machine has git" does not hold for a machine bought to run models.
+
+**Fixed in the runbook, not in code** — a new **step 0** listing the three things that must already
+exist (git, Python, ODBC Driver 17), each with the command that proves it, and which of them `pip`
+cannot install. **Deliberately not added to `preflight.py`**: by the time preflight can run, git has
+already succeeded.
+
+🔴 **With the trap that follows it: after installing git, the ALREADY-OPEN command window still
+fails with the identical error**, because a running shell does not pick up a changed PATH. That
+reads as a failed install when the install was fine, and it is the next thing that would have cost
+him twenty minutes.
+
+
+### Addendum 4, same day — **THE DESKTOP SESSION FOUND A CREDENTIALS FILE OUR `.gitignore` DID NOT COVER, AND A LAUNCHER THAT WOULD NOT HAVE RUN PYTHON AT ALL**
+
+Four findings from the Claude session on the office desktop, before a single line was judged. Two
+of them matter.
+
+#### 1. 🔴 A file called `env` — no dot — holding live credentials, NOT ignored
+
+`.gitignore` covers `.env`, `.env.*`, `.env.bak`. **A bare `env` matches none of them.**
+`git check-ignore` returned exit 1. It was the only untracked file in the clone, so **one
+`git add -A` would have written live SQL logins for five databases and the Anthropic key into
+permanent history** — the precise outcome the comment block at the top of that file was written to
+prevent, defeated by a missing full stop.
+
+🔑 **It gets there honestly, and that is why it will happen again.** Teams and Windows both
+dislike a leading dot, so `.env` becomes `env` or `env.txt` in transit — advice **this session gave
+him directly** (*"rename your copy to env.txt, send that, then rename it back"*). The rename-back is
+a step a person does; the ignore list has to cover the shapes the file **arrives** in, not the shape
+it is supposed to end up as. **A secret-handling rule that depends on someone finishing a two-step
+rename is not a rule.**
+
+**Fixed:** `env`, `env.txt`, `env.bak` and `*.env` added, each pattern verified with
+`git check-ignore` (all four IGNORED) and `.env.example` re-checked as still visible to git —
+because an over-broad pattern that hides the template is the obvious way to fix this badly.
+
+#### 2. ⚠️ The launcher would not have run Python on that machine
+
+`START-PRODUCTION-RUN.cmd` calls bare `python` four times. **A venv in the clone folder is not
+active when the file is double-clicked from Explorer**, so all four would have used the system
+interpreter — which on the office desktop is the **Windows Store stub** and does not run Python at
+all. The desktop session hit it for real: `state_audit.py` returned a Store advert rather than a
+traceback.
+
+🔴 **This was raised as a warning here and would still have shipped as one.** The venv was
+discussed in chat, the trap was described in chat, and the file was left calling bare `python`.
+**A hazard named in conversation and not written into the executable is a hazard that ships.**
+
+**Fixed in the file, not in the runbook:** it now activates `.venv` or `venv` if either exists,
+**proves the interpreter actually runs** before anything depends on it (the Store stub exits
+non-zero, so it is caught and explained rather than shown as an advert), and **prints
+`sys.executable`** — one line that ends the entire class of *"it says pyodbc is missing but I
+installed it"*. Tested here: correctly reported `none found`, named the Anaconda interpreter, and
+preflight ran on from there.
+
+#### 3 and 4. Recorded, NOT acted on — deliberately
+
+* **pandas 3.0.5 installed, not 2.x** (`requirements.txt` says `>=2.0`). **The judge path does not
+  import pandas at all** — measured when that file was written, not assumed now. Workbook and
+  taxonomy scripts do, and are **untested under pandas 3**. Not pinned: it cannot affect the run,
+  and editing dependencies at the gate of a 40-day launch buys nothing today.
+* **Python 3.14.6 on the desktop; `CLAUDE.md` says 3.13.** ⚠️ **Nothing in this codebase has ever
+  run on 3.14.** `preflight.py` only asserts `>= 3.9`, so it will pass and it is not evidence. Phase
+  1 is ~1 day and reversible, which makes it an acceptable test of an untested interpreter — but if
+  the judge behaves oddly in the first hours, **this is the first thing to suspect**, and it should
+  not be re-derived from scratch then.
+
+🔑 **Every defect in this session was found by running something, and none by reading it.**
+The desktop session found these two in minutes by trying to execute the files; both had been read,
+edited and committed here without being run on a machine that resembled the target.
+
+
+### Addendum 5, same day — 🔴 **THE FIX FOR THE LAUNCHER WAS ITSELF CORRUPTED, AND MY TEST OF IT PASSED FOR THE WRONG REASON**
+
+The desktop session, on the venv fix pushed an hour earlier: *"START-PRODUCTION-RUN.cmd has 4 BEL
+bytes where the backslash-a belongs ... The fix that was meant to stop the Store stub is itself
+defeated by the Store stub."* **Correct in every particular.**
+
+```
+intended   .venv\Scriptsctivate.bat
+actual     .venv\Scripts  +  0x07  +  ctivate.bat
+```
+
+**Cause:** the patch was applied through a heredoc that halved every backslash before Python saw it.
+`\S` is not a valid escape so it survived as `\S`; **`` IS a valid escape and became BEL, silently.**
+One of the two mangled itself and the other did not, which is why the line still looked plausible.
+⚠️ **It then happened a SECOND time in the repair attempt** — the same heredoc halved the same
+backslash again, and the "fix" re-inserted the identical byte. Only writing the bytes numerically
+(`bytes([92, 97])`, no escape sequence anywhere) actually landed it.
+
+#### 🔑 THE REAL FAILURE IS THE TEST, NOT THE BYTE
+
+**This launcher WAS run after the edit, and it printed `Virtual environment: none found`** — which
+was read as the correct fallback. It was. **This laptop has no venv, so the branch that was broken
+was never taken.** A test that cannot reach the changed line is not a test of the change, and it
+returns a clean result, which is worse than no test at all.
+
+**Re-tested properly this time: a real venv was created here specifically so the branch had to
+execute.**
+
+```
+Virtual environment: .venv
+Python:              ...\Medical QA - Indirects\.venv\Scripts\python.exe
+```
+
+The branch fires and the interpreter resolves **into the venv** — the thing that was asserted last
+time and is now measured. The venv was deleted afterwards.
+
+🔴 **Third defect of one family in this file: LF endings (f35aab9), then BEL bytes, both
+introduced by an editor and neither visible in `git diff`.** The desktop session named the general
+form: *"the file was edited by something that mangled a byte, and not executed afterwards."*
+**A batch file must be verified by its BYTES and by EXECUTION on a machine shaped like the target,
+never by reading the diff** — `git diff` renders both defects as a perfect line.
+
+**Also fixed:** `.venv/`, `venv/`, `ENV/` added to `.gitignore`. A venv inside the clone is thousands
+of untracked files beside the code, and the desktop now has one — `git add -A` there would have
+committed an entire Python installation.
+
+#### ✅ AND THE RUN IS OTHERWISE READY — PREFLIGHT PASSED ON THE DESKTOP
+
+First measurement ever taken on the machine that will do the work: **13 of 13, exit 0, `** GO **`.**
+
+```
+database      PI_Medical_QA_Indirect        (production, correctly scoped)
+write         proven by a ROLLED-BACK UPDATE, not by a role list
+run_id        1                             (no superseded generation)
+rows          2,786,018 - all still unjudged
+queue         29,469 vendors, GLOBAL_RANK complete
+NIM           nvidia/nemotron-3-super-120b-a12b answered in 0.8s, 3 models configured
+```
+
+⚠️ `ANTHROPIC_API_KEY` blank is fine — the backend is NIM and preflight requires `SQL_PASS` and
+`NIM_API_KEY` only. `MONITOR_SMTP_PASS` still blank and **preflight does not check it**, so the
+overnight email remains untested.
+
+⚠️ **And `.env` arrived on the desktop as `env`, dotless — it was never a duplicate, it was the
+ONLY copy.** The conditional delete in the instruction held: *"If `.env` does NOT exist, stop and
+tell me."* It did not exist, the session stopped, and the file was **renamed rather than deleted**.
+🔑 **Deleting what looks like a stray copy would have destroyed the only credentials on the
+machine**, with no clone or pull able to restore them.
+
+### Addendum 6, 2026-09-16 — **THE DESKTOP IS PROVISIONED AND PREFLIGHT-PASSING. The venv branch executed from a cold launcher, and `.env` arrived DOTLESS — renamed, never deleted**
 
 Everything below was **executed on the run machine itself**, not read from a diff. This machine is
 now the machine of record for the run.
@@ -14947,8 +14947,39 @@ Stated as untested, not as a known break.
    decision, not a leftover — `START-PRODUCTION-RUN.cmd`, then type YES.
 2. **After launch 1 finishes (~a day), look at real verdicts BEFORE launch 2.** Unchanged from 139.
 3. `MONITOR_SMTP_PASS` — re-run `fire_alert.py` here; 587 may be filtered on this network.
-4. ⚠️ **`RUN_LOG.md` Addendums 2, 3 and 4 are in the WRONG PLACE in this file** — lines ~3759–3890,
-   under the `2026-08-06` deployment-concept entry, about 11,000 lines above where they belong.
-   The file is otherwise strictly chronological (Findings 110→139 ascend cleanly). Not moved:
-   this log is append-only and reordering it is Sameer's call. **A reader who opens the tail sees
-   this entry and the confirmation-gate addendum, and misses three others entirely.**
+4. ~~⚠️ **`RUN_LOG.md` Addendums 2, 3 and 4 are in the WRONG PLACE in this file**~~ —
+   🔓 **REPAIRED 2026-09-16, same day, by the laptop session that caused it.** They sat at
+   lines ~3759–3975 under the `2026-08-06` deployment-concept entry, ~11,000 lines above where they
+   belong. **Raised by the desktop session, which correctly refused to move them itself.**
+
+---
+
+## Filing note — 2026-09-16 — **four addenda were written to the wrong place by `str.replace(anchor, …, 1)`, and the log's one job is that its tail is readable**
+
+**Cause, and it is embarrassingly simple.** Each addendum was inserted by anchoring on
+`"
+**Next session starts here:**"` and calling `str.replace(anchor, add + anchor, 1)`.
+**`count=1` replaces the FIRST match in the file, not the last.** That phrase appears **30+ times**
+in this log — it is the closing ritual of every entry — so all four landed at the first one, inside
+the `2026-08-06` deployment-concept entry. Addendum 1 escaped only because its anchor happened to
+include a unique following line.
+
+🔑 **THE DAMAGE WAS NOT TO THE CONTENT. IT WAS TO THE ONE PROPERTY THIS FILE IS FOR.**
+`CLAUDE.md` says the next session starts from the tail of `RUN_LOG.md`. Three findings — the
+LF-endings launcher, git missing from the desktop, the dotless credentials file — were present,
+complete, committed, and **invisible to anyone following the documented way of reading this file.**
+A finding nobody will read is a finding that was not recorded.
+
+**The repair moved text and changed nothing else, and that was verified rather than asserted:**
+the whole file was compared against `HEAD` as a multiset of lines — **exactly two lines differ, both
+of them the `Addendum 5 → Addendum 6` renumber** made because the desktop session had independently
+written its own Addendum 5 at the true end. Line count unchanged at 14,954. No wording was edited.
+
+⚠️ **This is a move, not a rewrite — the append-only rule is about never altering what a finding
+SAID.** The desktop session was right to stop and hand it back rather than reorder the log on its
+own initiative.
+
+🔑 **And it is the same failure as the other three today, one level up: an edit applied by a
+tool and never inspected in its result.** LF endings, BEL bytes, and now insertion point — none
+visible in a diff of the change itself, all three obvious the moment anyone looked at the artefact.
+**`git diff` shows what you changed; it does not show where it landed or what it became.**
