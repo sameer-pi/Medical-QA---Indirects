@@ -4,39 +4,26 @@
 
 ---
 
-## 🟢 MOVING TO THE OFFICE DESKTOP — the whole thing, five commands
+## 🟢 MOVING TO THE OFFICE DESKTOP → **[`DESKTOP-START-HERE.md`](DESKTOP-START-HERE.md)**
 
 Sameer, 2026-08-27: *"i clone the repo, run a few easy commands that you ask me to do, and the judge
-starts judging, thats how seamless i want it."* This is that list.
+starts judging, thats how seamless i want it."*
 
-```
-1   git clone https://github.com/sameer-pi/Medical-QA---Indirects.git
-        ⚠️ to a NON-SYNCED path — C:\QA\ is fine. NOT OneDrive or the Teams folder:
-        a sync client rewriting files under a running judge is a failure nobody would diagnose.
+**The five steps moved out of this file on 2026-09-16 and now live in `DESKTOP-START-HERE.md`**,
+which is the file on the desktop when you get there — along with what must not be closed, the
+launch-1-stops-at-100-vendors trap, and a symptom table for when it looks wrong.
 
-2   copy .env into the folder BY HAND (Teams). It is not in the repo and never will be.
+**They are not repeated here on purpose.** A second copy of a procedure drifts exactly the way a
+second copy of status drifted in `README.md`, and the copy that is wrong is always the one somebody
+reads. One copy, in the place it gets used.
 
-3   pip install -r requirements.txt
-        pyodbc + PyYAML is all the run needs. ⚠️ pip CANNOT install the ODBC driver —
-        "ODBC Driver 17 for SQL Server" must be on the machine already. Step 4 checks.
-
-4   python pipeline\preflight.py --production
-        Ten seconds, thirteen checks. It names anything missing instead of failing at 2am.
-
-5   START-PRODUCTION-RUN.cmd          ← double-click it
-        Re-runs preflight, asks you to type YES, then starts the supervisor, the monitor
-        and the dashboard. Nothing starts unless preflight passes.
-```
-
-**Then check the page says `PRODUCTION` and names `PI_Medical_QA_Indirect`.** It labels its own
-database. If it says *pilot*, stop and ask — a pilot page reads 100% complete and perfectly healthy
-while production sits untouched, which is the one way this misleads you.
-
-🔒 **Run the .cmd twice by accident and nothing bad happens** — `supervise.py` has four interlocks and
-refuses to start a second judge. **ONE JUDGE AT A TIME**, and both machines reach the same database.
+🔒 **Run the launcher twice by accident and nothing bad happens** — `supervise.py` has four interlocks
+and refuses to start a second judge. ⚠️ **But those interlocks scan the LOCAL process list only**, so
+they cannot see a judge running on the *other* machine. **ONE JUDGE AT A TIME** across both machines
+is enforced by you, not by code.
 
 ⚠️ **`MONITOR_SMTP_PASS` is still blank**, so the page reddens on a stall but no email leaves. That is
-§ 0 below and it does not block any of the above.
+§ 0 below and it does not block the run.
 
 ---
 

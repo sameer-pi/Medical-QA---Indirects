@@ -12,7 +12,9 @@ Internal project — findings go to each hospital's account manager, not to the 
 
 | File | What it is | Share it? |
 |---|---|---|
-| **[`PLAN.md`](PLAN.md)** | The technical plan of record. **v3.22** — read the change table at the top first | ❌ Internal |
+| **[`DESKTOP-START-HERE.md`](DESKTOP-START-HERE.md)** | 🟢 **Starting the judging run on the office desktop — start here.** The five steps, what must not be closed, and what to do when it looks wrong | ❌ Internal |
+| **[`TRACKER.md`](TRACKER.md)** | 🔴 **Where the programme actually is.** The ONLY place status lives — not this file | ❌ Internal |
+| **[`PLAN.md`](PLAN.md)** | The technical plan of record. **v3.71** — read the change table at the top first | ❌ Internal |
 | **[`PROJECT-BRIEF (shareable).md`](PROJECT-BRIEF%20(shareable).md)** | Plain-language version for the manager and account managers | ✅ **This one** |
 | **[`ACTIONS.md`](ACTIONS.md)** | Sameer's to-do list to unblock the pilot | ❌ Internal |
 | **[`RUN_LOG.md`](RUN_LOG.md)** | Dated record of every run and finding. Append-only | ❌ Internal |
@@ -25,9 +27,12 @@ the plan becomes the **next version with the change stated in the table at the t
 silent edit. Where a later version reverses an earlier one, the earlier entry is struck through and
 points forward, so the reasoning stays auditable.
 
-**Starting a session:** read `PLAN.md`'s change table, then the tail of `RUN_LOG.md`, then
-`ACTIONS.md`. The last section of the newest `RUN_LOG.md` finding is always headed *"Next session
-starts here"*.
+**Starting a session:** run `python pipeline/state_audit.py`, then read `TRACKER.md`, then
+`PLAN.md`'s change table, then the tail of `RUN_LOG.md`, then `ACTIONS.md`. The last section of the
+newest `RUN_LOG.md` finding is always headed *"Next session starts here"*.
+
+⚠️ **Sections of this file below "Setup" describe the PILOT ERA and have not been re-verified.**
+The commands still exist, but treat any figure in them as provisional until re-measured.
 
 ---
 
@@ -55,18 +60,21 @@ belongs in `clients/<key>/config.yaml` instead.
 |---|---|---|
 | `Z_Melbourne_Health`, `Z_Northern_Health`, `Z_Western Health`, `Z_Sydney_Adventist` | **read-only** | Source AP lines, client taxonomies, `PMML_Rules` |
 | `PI_Master_Supplier_Database_v2` | **read-only** | Vendor identity and coherence |
-| **`PI_Medical_QA_Indirect_Pilot`** | **read/write** | **The only database the pipeline writes to** |
-| `PI_Medical_QA_Indirect` | — | Production. ⛔ **Not created and not built against** |
+| **`PI_Medical_QA_Indirect_Pilot`** | **read/write** | 2,000 rows. The proving ground, regenerates in ~16 min |
+| **`PI_Medical_QA_Indirect`** | **read/write** | **PRODUCTION — created 2026-08-18, loaded with 2,786,018 lines. The real run** |
 
-**PILOT ONLY.** Production is not created until the pilot has run and proven schema v2 —
-standing instruction, and `QA_DATABASE` in `.env` is deliberately blank. `apply_schema.py` **refuses
-to run against anything but the pilot**, checked two ways, so this is enforced by code rather than
-by memory.
+~~**PILOT ONLY.** Production is not created until the pilot has run and proven schema v2.~~
+🔓 **Discharged 2026-08-18** — schema v2 is proven and production exists. **There are TWO databases
+now and the distinction still matters: scope every query, table and deliverable to ONE of them
+explicitly, and say which.** A figure quoted without naming its source is ambiguous in a way it
+never used to be. Production must be **asked for on purpose** — `--production` on every tool, a lock
+`test_guards.py` pins with 20 checks.
 
-**The pipeline writes to the pilot only.** The four client databases and the MSD are read-only,
-always — no temp tables, no exceptions. `Z_Western Health` genuinely contains a space — bracket it.
+**The pipeline writes to the QA databases only.** The four client databases and the MSD are
+read-only, always — no temp tables, no exceptions. `Z_Western Health` genuinely contains a space —
+bracket it.
 
-### The tables in the pilot
+### The tables (identical in both databases — parity proven 38 = 38)
 
 | Table | What it is |
 |---|---|
@@ -171,77 +179,28 @@ before quoting any figure — two generations in the table double-counts everyth
 
 ---
 
-## Current status — 6 August 2026
+## Where the project actually is
 
-| Phase | State |
-|---|---|
-| **Planning** | ✅ `PLAN.md` at v3.25, **reviewed and signed off by Sameer 6 Aug** |
-| **0 — Housekeeping** | ✅ Structure built, template frozen into `_reference/` |
-| **0 — Access** | ✅ Credentials live, all four client DBs + MSD verified readable |
-| **0 — Verify & profile** | ✅ Done. All four PASS pre-flight; in-scope population confirmed at **2,764,531 lines / $5,838M**, folding to **~1,010,661 judge units** |
-| **0.5 — Pilot** | ✅ **Judged.** 2,000 lines, 500 per hospital · **all four complete** · 1,462 model verdicts · 211 repeated lines, **0 disagreements** |
-| **0.6 — Review round-trip** | ✅ **Built and verified.** Four workbooks in `output/QA_LINE_TEST/`, with the account managers. Ingest tested end to end. ⏳ **Waiting on the first completed workbook — no accuracy figure is publishable until agreement is measured** |
-| **1 — First full client** | ⛔ Not started |
-| **2 — Harden** | ⛔ Not started |
-| **3 — Roll out remaining three** | ⛔ Not started |
-| **4 — Program layer + movement tracker** | ⛔ Not started |
+🔴 **Status does NOT live in this file, and the section that used to sit here has been removed.**
 
-**Built:** `db.py`, `msd.py`, `clientcfg.py`, `profile_clients.py`, `verify_client.py`,
-`smoke_test.py`, `schema.sql`, `apply_schema.py`, `load_taxonomy.py`, `build_pilot.py`, `judge.py`,
-`state_audit.py`, `rule_overlap.py`, **`make_review_workbook.py`**, **`read_review_workbook.py`**.
-**All four client configs**, all passing pre-flight.
+It was a correctly-dated **6 August 2026** snapshot with no way to refresh itself, and by the time it
+was found it said production did not exist, that there was no git repository, and that the pilot was
+the only database — **all three wrong, on the first file a fresh clone opens.**
 
-**Deliverable destination:** the workbooks are an interim surface. The intended home is a QA
-module in the internal PI Data Analytics app, where the analyst approves or overrides a finding
-and an agreed correction is drafted as a rule in that hospital's own format. Design and the
-measured machinery of all four hospitals are in `DEPLOYMENT-CONCEPT (Indirects QA in PIDA).md`.
-Nothing is being built there until the pilot review is in.
+> ## → **[`TRACKER.md`](TRACKER.md)** is the only place the programme's position is recorded.
+>
+> It carries an as-at date and its measured block is copied from `python pipeline/state_audit.py`,
+> never typed from memory.
 
-**Not built:** `load.py`, `gates.py`, `enrich.py`, `research.py`, `rules.py`, `report.py`,
-`run_client.py`. Much of what they were specified to do now lives in `build_pilot.py` and
-`judge.py`; the split gets revisited at schema v2, not before.
+**Starting the run on the office desktop?** → **[`DESKTOP-START-HERE.md`](DESKTOP-START-HERE.md)**
 
-**Pre-flight status** (`python pipeline/verify_client.py`):
-
-```
-melbourne_health   PASS      northern_health   PASS
-western_health     PASS      sydney_adventist  PASS
-```
-
-**The judging is complete. All four hospitals, 500 lines each.**
-
-| Hospital | Correct | Incorrect | Uncertain | **Accuracy** |
-|---|---:|---:|---:|---:|
-| Melbourne Health | 140 | 213 | 147 | **39.7%** |
-| Northern Health | 227 | 137 | 136 | **62.4%** |
-| Western Health | 286 | 76 | 138 | **79.0%** |
-| Sydney Adventist | 311 | 42 | 147 | **88.1%** |
-
-Accuracy = `Correct / (Correct + Incorrect)`; `Uncertain` is excluded from **both** sides and runs
-27–29% per hospital. ⚠️ **These are 500-line samples, not the ~2.8M-line population, and the spread
-is mostly taxonomy depth rather than how well each hospital is run** — see `PLAN.md` v3.22 #131.
-
-**Uncategorised lines now get a suggestion from the client's FULL taxonomy.** 500 pilot lines carry
-no category at all; **167 of them (33.4%) were judged CLINICAL** and had been sitting in indirect
-scope purely because a field was blank. Vendor history across the full 8.4M-line population
-predicted 33.0% independently. See `PLAN.md` v3.22 § D and `RUN_LOG.md` Finding 58.
-
-**Still no golden set.** Nothing independent measures whether the judge is right; override data is a
-monitor, not a calibration.
-
-**Waiting on Sameer:** one line of SQL to set the pilot database to SIMPLE recovery, the Northern
-clinical-leak decision, and Sydney Adventist's `CBoard Lookup` question for Monali — all in
-[`ACTIONS.md`](ACTIONS.md).
-
-> **Pilot only.** All work targets `PI_Medical_QA_Indirect_Pilot`. Production is not created and not
-> built against until the pilot proves schema v2.
-
----
 
 ## Notes
 
-- **No git.** The audit trail is dated `output/` folders, the `qa_run` table, and `RUN_LOG.md`.
-  **Log every run.**
+- ~~**No git.**~~ 🔓 **There is a git repository as of 2026-08-26** —
+  `github.com/sameer-pi/Medical-QA---Indirects`, **private**, and how the code reaches the office
+  desktop. `.env` is **not** in it and never will be. The audit trail is still dated `output/`
+  folders, the `qa_run` table and `RUN_LOG.md`. **Log every run.**
 - **The clinical gate is category-based only.** Keyword exclusion is deliberately unsupported —
   substring matching on descriptions silently deletes in-scope indirect spend (*clinical waste
   removal*, *theatre HVAC maintenance*, *patient meal trolley*) and corrupts the accuracy

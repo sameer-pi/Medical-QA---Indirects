@@ -34,6 +34,7 @@ status section was wrong for 15 days on exactly this failure.
 
 | Path | Contains | Rule |
 |---|---|---|
+| `DESKTOP-START-HERE.md` | **The office desktop runbook** — the five steps from clone to judging, what must not be closed, what to do when it looks wrong. Written for Sameer *and* for the Claude session on that machine | Internal. **The ONLY copy of the runbook** — `ACTIONS.md` points here rather than repeating it, because a second copy of a procedure drifts exactly as a second copy of status does. **No status in it**; that stays in `TRACKER.md` |
 | `TRACKER.md` | **Where the programme actually is** — the stage board (0–8), gates, timelines, carried defects | Internal. **The ONLY place status lives.** Carries an as-at date; if it is older than the last `RUN_LOG.md` entry it is stale and not to be trusted. Update it at session end, beside `RUN_LOG.md`. Its measured block is copied from `state_audit.py`, never typed from memory |
 | `PLAN.md` | Technical plan of record — the **reasoning**. Status lives in `TRACKER.md`, not here | Internal. Version-bump + state changes at the top |
 | `PROJECT-BRIEF (shareable).md` | Plain-language version | **The only doc cleared to share.** No credentials, no server details, no provisional figures |

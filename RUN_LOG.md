@@ -14461,3 +14461,120 @@ weekends off and half throughput and still lands inside.
    should be enough with no IT ticket. **Re-run `fire_alert.py` ON THE DESKTOP** — 587 may be
    filtered there and preflight does not check SMTP.
 4. Eight interlock-test `supervise-*.log` files stay UNCOMMITTED on the laptop.
+
+---
+
+## Finding 139 — 2026-09-16 — **the desktop runbook exists, and writing it found `README.md` telling a fresh clone that production does not exist**
+
+**What Sameer asked for.** He is logging onto his profile on the office desktop, cloning the repo and
+starting the judge from a Claude session there: *"prepare some md file that when i log onto the
+desktop computer it knows whatever files are needed and it wont confuse the hell out of me."*
+
+### 1. THE PLAN WORKS, WITH ONE CORRECTION — the judge must not be a child of the Claude session
+
+A judge started inside a Claude session dies when that session closes. Already flagged 2026-08-25
+(Finding 126 step 3) and printed by `preflight.py` on every GO. `START-PRODUCTION-RUN.cmd` already
+solves it — `start` puts the judge in its own window — so the split is: **Claude does steps 1-4, the
+launcher does step 5.** Written into the new file as a rule addressed to the Claude session itself.
+
+**Two risks his plan raised that were in NO document:** signing out of Windows terminates the
+session's processes (**lock, never sign out**), and the power plan. He confirmed both: he will not
+sign out, and the power plan is fine. Recorded because the next reader will not have been asked.
+
+### 2. 🔴 THE INTERLOCKS CANNOT SEE THE OTHER MACHINE — stated plainly for the first time
+
+`supervise.py`'s interlock 2 scans **the local process list**. A judge running on the laptop is
+invisible to a supervisor on the desktop and vice versa. `CLAUDE.md` and `preflight.py` both say
+*ONE JUDGE AT A TIME, both machines reach the same database* — **but neither says that this one is
+enforced by a human and not by the code.** It is now in the runbook, with the check that actually
+works: start the read-only monitor first and see whether the judged count is moving.
+
+⚠️ **This matters more than it did three weeks ago.** The last log entry is 2026-08-27 and today is
+2026-09-16. **Nothing in any document establishes whether the run was started on the desktop in
+between**, and I did not measure production to find out — so the runbook opens by telling the reader
+to measure rather than assume.
+
+### 3. 🔴 `README.md` WAS ACTIVELY WRONG, ON THE FIRST FILE A FRESH CLONE OPENS
+
+Found by asking what the desktop would read, not by reviewing the file. Its status section was a
+**correctly dated 6 August 2026** snapshot:
+
+```
+"PI_Medical_QA_Indirect  —  Production. NOT created and not built against"
+"PILOT ONLY. All work targets PI_Medical_QA_Indirect_Pilot"
+"No git. The audit trail is dated output/ folders..."
+"PLAN.md at v3.22"
+```
+
+**Production has existed since 2026-08-18 and holds 2,786,018 lines. The repo has existed since
+2026-08-26 and is how the code reaches the desktop. `PLAN.md` is at v3.71.** A Claude session on the
+desktop reading this would conclude the production run it was about to start is forbidden.
+
+🔑 **THIS IS EXACTLY THE FAILURE `TRACKER.md` WAS CREATED TO END, IN A FILE NOBODY THOUGHT OF AS
+CARRYING STATUS.** `PLAN.md`'s stale status section was found on 2026-08-24 and the lesson recorded
+was *"a second copy of the status is a second thing that goes stale"* — and `README.md` was a third
+copy the whole time, unexamined because it reads as orientation rather than as status.
+**The rule was written down and then not applied to the file most likely to be read first.**
+
+**Fixed:** the status block is replaced by a pointer to `TRACKER.md` that says what it used to claim
+and why it was removed; the databases table now shows production as live with the two-database
+warning; the "No git" note is struck and corrected; and everything below `## Setup` is marked
+**pilot-era, not re-verified** rather than silently trusted.
+
+### 4. ONE COPY OF THE RUNBOOK, NOT TWO
+
+The five steps were at the top of `ACTIONS.md`. Copying them into the new file would have created a
+second copy of a **procedure** — the same defect as a second copy of status, and the wrong copy is
+always the one somebody reads. **The runbook now lives only in `DESKTOP-START-HERE.md`**, in the
+place it is used, and `ACTIONS.md` points to it. Registered in `CLAUDE.md`'s file table.
+
+⚠️ **`DESKTOP-START-HERE.md` deliberately carries NO status** — only procedure, and a pointer to
+`TRACKER.md`. That is the whole reason the file above it went stale.
+
+### 5. What the new file covers
+
+Clone to a non-synced path · `.env` by hand · the ODBC driver pip cannot install · preflight ·
+the launcher · which of the two windows must stay open · **launch 1 stops at 100 vendors and a
+second launch is required** (17.3% of lines, 66.9% of signed spend — correct behaviour, not a
+crash) · a symptom table · and that `MONITOR_SMTP_PASS` is still blank so the overnight alert chain
+is broken end to end.
+
+### 6. 🔴 SAMEER CAUGHT THE REAL TRAP BEFORE THE PUSH — the default is the PILOT
+
+*"when i tell the claude session to start i hope it will begin with the 2M lines and not the pilot."*
+
+**Measured, not assumed.** `.env` now holds BOTH keys — `QA_DATABASE` set (22 chars,
+`PI_Medical_QA_Indirect`) and `QA_DATABASE_PILOT` set (28 chars). `connect_qa()` resolves
+`production=None → not pilot → pilot`, and `supervise.py --production` is `store_true`.
+
+```
+START-PRODUCTION-RUN.cmd            PRODUCTION   2,786,018 lines   (flag written into the file)
+supervise.py --production           PRODUCTION   2,786,018 lines
+supervise.py                        THE PILOT        2,000 rows    <- the default
+```
+
+🔑 **The `.cmd` is safe. A HAND-TYPED command is not** — and "tell the Claude session to
+start it" is exactly how a hand-typed command happens. A pilot run finishes in minutes, reports
+success, and the dashboard reads 100% complete and perfectly healthy **while production sits
+untouched**. The safe default (`db.py`: *"a mistake costs 16 minutes"*) is right, and it is also
+precisely what makes the wrong start look like the right one.
+
+**Added to the runbook as its own section**, with the three places the run names its own database
+(the YES prompt's *"2,786,018 lines on PI_Medical_QA_Indirect"*, the judge window's
+*"supervisor starting (PRODUCTION)"*, and the dashboard banner) and an instruction to the Claude
+session not to start the judge by hand at all.
+
+⚠️ **The original file did NOT say this.** It said "step 5 is a double-click" and left why
+implicit — a procedure that is correct while its reader follows it exactly, which is not what a
+runbook is for. Found by the reader, not by the writer.
+
+**Next session starts here:**
+1. 🔴 **PUSH. `DESKTOP-START-HERE.md` is worthless until it is on GitHub** — the desktop gets it by
+   clone. Committed but not pushed as of this entry.
+2. **Measure production before starting anything.** Three weeks of silence; nothing establishes
+   whether a run was started on the desktop.
+3. **After launch 1 finishes (~a day), look at real verdicts BEFORE launch 2.** Get the true
+   Uncertain split rather than the 15.4% projection in Finding 138.
+4. `MONITOR_SMTP_PASS` still blank. Re-run `fire_alert.py` **on the desktop** — 587 may be filtered
+   there and preflight does not check it.
+5. **`README.md` below `## Setup` is pilot-era and unverified.** Marked, not fixed.
