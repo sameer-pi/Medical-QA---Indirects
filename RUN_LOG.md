@@ -3755,6 +3755,65 @@ Written up as **`DEPLOYMENT-CONCEPT (Indirects QA in PIDA).md`** (new file, root
 Nothing in `PLAN.md` changed — this is a future-stage concept, not a change to the pilot plan of
 record. `CLAUDE.md`'s file table gained one row.
 
+
+### Addendum 2, same day — 🔴 **THE LAUNCHER DID NOT RUN AT ALL. `START-PRODUCTION-RUN.cmd` HAD BEEN LF-ONLY SINCE THE COMMIT THAT CREATED IT, AND cmd.exe MIS-PARSES THAT.**
+
+Found by asking "are you sure it will work?" and then **actually running the thing** instead of
+reasoning about it. The answer was no.
+
+```
+'M' is not recognized as an internal or external command,        <- REM
+'cho.' is not recognized as an internal or external command,     <- echo
+'thon' is not recognized as an internal or external command,     <- python
+...20 of them, then:
+  ** STOPPED - preflight did not pass. Nothing has been started.
+```
+
+**A Windows batch file must be CRLF.** Given LF-only, cmd.exe reads a byte count and drops leading
+characters on the following lines. The file is perfect in every editor, passes any review by eye,
+and fails the instant it is double-clicked — **with an error message that blames preflight**, because
+the line that launches preflight was eaten too.
+
+```
+10a404a  CRLF=0  bare LF=94     <- the commit that CREATED it
+a500410  CRLF=0  bare LF=94
+de05f6b  CRLF=0  bare LF=94
+eee6f02  CRLF=0  bare LF=122    <- after my edit. Same defect, more of it
+```
+
+🔴 **IT WAS NEVER MINE TO INTRODUCE AND IT WAS ALSO NEVER TESTED.** Finding 137 states this
+launcher was *"Tested by running it and cancelling at the prompt: preflight passed 13/13, the gate
+was reached, `Cancelled. Nothing was started.`"* **That claim does not survive re-testing** — the
+file in that commit cannot reach its own preflight line. Whatever was checked that day, it was not
+this file being executed by cmd.exe. **A recorded test is not a test.**
+
+🔑 **AND THE HAZARD WAS DISGUISED AS A NON-HAZARD BY `core.autocrlf`.** This laptop has
+`autocrlf=true`, so a fresh clone HERE gets CRLF and works, which is exactly how this would have
+survived a "well, just clone it and see". **The office desktop's git config has never been seen.**
+Default Git-for-Windows sets autocrlf=true, so it would probably have been fine — *probably*, on
+launch morning, decided by a setting on a machine nobody has looked at.
+
+**Fixed with `.gitattributes`, not with a one-off conversion:**
+
+```
+*.cmd  text eol=crlf
+*.bat  text eol=crlf
+```
+
+`eol=crlf` forces CRLF **on checkout regardless of the machine's `core.autocrlf`**. The working copy
+was normalised too (122 CRLF, 0 bare LF).
+
+**RE-TESTED, AND THIS TIME THE OUTPUT IS THE EVIDENCE.** Full run of the launcher on this laptop:
+preflight reached and returned `** GO **` against production, the corrected gate rendered with the
+right figures (`PI_Medical_QA_Indirect` / 483,313 of 2,786,018 / 17.3% / `LAUNCH 1 OF 2`), the
+cancel path fired, and a process query afterwards found **no python process and no supervisor
+lock** — nothing was started.
+
+🔑 **Three defects this session, all found by Sameer asking a plain question, none by review.**
+*"will it start the pilot?"* → the default is the pilot. *"which step starts the 2M lines?"* → the
+confirmation gate overstated its job 5.8×. *"are you sure it will work?"* → **it did not run at
+all.** Each one was in a file that had been read, edited and committed without being executed.
+
 **Next session starts here:**
 1. Sameer reviews the `PLAN.md` v3.22 change table (123–142) — still the standing gate.
 2. Sameer reads `DEPLOYMENT-CONCEPT (Indirects QA in PIDA).md` — the open questions in § 9 are

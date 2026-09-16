@@ -1,0 +1,32 @@
+# =====================================================================================
+# WINDOWS BATCH FILES MUST BE CRLF. This is not style - cmd.exe MIS-PARSES an LF-only
+# .cmd file: it drops leading characters on following lines, so REM becomes M, echo
+# becomes cho and python becomes thon. The file looks perfect in any editor and fails
+# the moment it is double-clicked.
+#
+# Measured 2026-09-16: START-PRODUCTION-RUN.cmd had been LF-only since the commit that
+# created it (10a404a). A run on this laptop produced 20 "'M' is not recognized" errors
+# and then "STOPPED - preflight did not pass" - because the line that runs preflight had
+# been eaten too. RUN_LOG Finding 137 records this launcher as "tested by running it and
+# cancelling at the prompt"; that claim does not survive re-testing.
+#
+# `eol=crlf` forces CRLF ON CHECKOUT REGARDLESS OF THE MACHINE'S core.autocrlf. That is
+# the point: this laptop has autocrlf=true, but the office desktop's git config is not
+# something we control or have seen, and "it works if their git is configured like mine"
+# is not a guarantee - it is a coin toss on launch morning.
+# =====================================================================================
+*.cmd  text eol=crlf
+*.bat  text eol=crlf
+
+# Everything else: normalised to LF in the repository, native on checkout.
+*.py   text
+*.md   text
+*.sql  text
+*.yaml text
+*.yml  text
+*.csv  text
+
+# Never touch these.
+*.xlsx binary
+*.png  binary
+*.jpg  binary
