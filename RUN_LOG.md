@@ -3843,6 +3843,66 @@ fails with the identical error**, because a running shell does not pick up a cha
 reads as a failed install when the install was fine, and it is the next thing that would have cost
 him twenty minutes.
 
+
+### Addendum 4, same day — **THE DESKTOP SESSION FOUND A CREDENTIALS FILE OUR `.gitignore` DID NOT COVER, AND A LAUNCHER THAT WOULD NOT HAVE RUN PYTHON AT ALL**
+
+Four findings from the Claude session on the office desktop, before a single line was judged. Two
+of them matter.
+
+#### 1. 🔴 A file called `env` — no dot — holding live credentials, NOT ignored
+
+`.gitignore` covers `.env`, `.env.*`, `.env.bak`. **A bare `env` matches none of them.**
+`git check-ignore` returned exit 1. It was the only untracked file in the clone, so **one
+`git add -A` would have written live SQL logins for five databases and the Anthropic key into
+permanent history** — the precise outcome the comment block at the top of that file was written to
+prevent, defeated by a missing full stop.
+
+🔑 **It gets there honestly, and that is why it will happen again.** Teams and Windows both
+dislike a leading dot, so `.env` becomes `env` or `env.txt` in transit — advice **this session gave
+him directly** (*"rename your copy to env.txt, send that, then rename it back"*). The rename-back is
+a step a person does; the ignore list has to cover the shapes the file **arrives** in, not the shape
+it is supposed to end up as. **A secret-handling rule that depends on someone finishing a two-step
+rename is not a rule.**
+
+**Fixed:** `env`, `env.txt`, `env.bak` and `*.env` added, each pattern verified with
+`git check-ignore` (all four IGNORED) and `.env.example` re-checked as still visible to git —
+because an over-broad pattern that hides the template is the obvious way to fix this badly.
+
+#### 2. ⚠️ The launcher would not have run Python on that machine
+
+`START-PRODUCTION-RUN.cmd` calls bare `python` four times. **A venv in the clone folder is not
+active when the file is double-clicked from Explorer**, so all four would have used the system
+interpreter — which on the office desktop is the **Windows Store stub** and does not run Python at
+all. The desktop session hit it for real: `state_audit.py` returned a Store advert rather than a
+traceback.
+
+🔴 **This was raised as a warning here and would still have shipped as one.** The venv was
+discussed in chat, the trap was described in chat, and the file was left calling bare `python`.
+**A hazard named in conversation and not written into the executable is a hazard that ships.**
+
+**Fixed in the file, not in the runbook:** it now activates `.venv` or `venv` if either exists,
+**proves the interpreter actually runs** before anything depends on it (the Store stub exits
+non-zero, so it is caught and explained rather than shown as an advert), and **prints
+`sys.executable`** — one line that ends the entire class of *"it says pyodbc is missing but I
+installed it"*. Tested here: correctly reported `none found`, named the Anaconda interpreter, and
+preflight ran on from there.
+
+#### 3 and 4. Recorded, NOT acted on — deliberately
+
+* **pandas 3.0.5 installed, not 2.x** (`requirements.txt` says `>=2.0`). **The judge path does not
+  import pandas at all** — measured when that file was written, not assumed now. Workbook and
+  taxonomy scripts do, and are **untested under pandas 3**. Not pinned: it cannot affect the run,
+  and editing dependencies at the gate of a 40-day launch buys nothing today.
+* **Python 3.14.6 on the desktop; `CLAUDE.md` says 3.13.** ⚠️ **Nothing in this codebase has ever
+  run on 3.14.** `preflight.py` only asserts `>= 3.9`, so it will pass and it is not evidence. Phase
+  1 is ~1 day and reversible, which makes it an acceptable test of an untested interpreter — but if
+  the judge behaves oddly in the first hours, **this is the first thing to suspect**, and it should
+  not be re-derived from scratch then.
+
+🔑 **Every defect in this session was found by running something, and none by reading it.**
+The desktop session found these two in minutes by trying to execute the files; both had been read,
+edited and committed here without being run on a machine that resembled the target.
+
 **Next session starts here:**
 1. Sameer reviews the `PLAN.md` v3.22 change table (123–142) — still the standing gate.
 2. Sameer reads `DEPLOYMENT-CONCEPT (Indirects QA in PIDA).md` — the open questions in § 9 are
